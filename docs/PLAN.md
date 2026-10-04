@@ -30,10 +30,29 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 | エディタ | CodeMirror 6 + `@replit/codemirror-vim` | Vim エミュレーションの完成度が高く、キー入力やコマンド実行のイベントを取得できる |
 | 状態保存 | localStorage | サーバー不要 |
 | 演出 | 自前の canvas 紙吹雪（または canvas-confetti） | 軽量 |
-| デプロイ | GitHub Actions → GitHub Pages | main への push で自動公開 |
+| デプロイ | GitHub Actions → `gh-pages` ブランチ → GitHub Pages | 本番は main へのマージで公開、PR ごとにプレビューを公開 |
 | テスト | Vitest（判定ロジック）＋ Playwright（主要な操作の E2E） | 判定のバグは体験を壊すため |
 
-## 3. URL と多言語対応
+## 3. 開発の流れと検証環境
+
+**main には、オーナーが画面で動作確認したものだけを入れる。**
+
+```
+feat/xxx ブランチで作業
+  ↓ PR を作成（main 向け）
+PR プレビューが自動で公開される
+  https://aew2sbee.github.io/hjkl-quest/pr-preview/pr-<番号>/
+  ↓ オーナーが動作と画面を確認
+OK ならマージ → 本番 https://aew2sbee.github.io/hjkl-quest/ に反映
+PR を閉じるとプレビューは自動で削除
+```
+
+- Pages の公開元は `gh-pages` ブランチ。本番はルート、プレビューは `pr-preview/` 以下に置く
+- プレビューでは画面に `PREVIEW` バッジを出し、`noindex` を付ける
+- 本番とプレビューは同じドメインなので、localStorage のキーは公開パスごとに分ける
+- main への直接 push はしない
+
+## 4. URL と多言語対応
 
 ```
 /hjkl-quest/                 ブラウザの言語（保存済みの選択を優先）で /ja/ か /en/ へ移動
@@ -47,7 +66,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 - 選んだ言語は localStorage に保存する
 - 翻訳ファイルに抜けがあればビルドを失敗させる
 
-## 4. 画面仕様
+## 5. 画面仕様
 
 ### レッスン画面
 ```
@@ -83,7 +102,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 - 「テキストは直せました！ でも今回は `dw` で挑戦してみよう」と表示し、[もう一度] ボタンで課題を始め直す
 - 不正解という言葉は使わない
 
-## 5. レッスン構成（vimtutor 準拠）
+## 6. レッスン構成（vimtutor 準拠）
 
 本文はそのまま転載せず、構成を参考に自作する。クレジットに vimtutor への謝辞を記載する。
 
@@ -97,7 +116,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 | 6 | その他の編集 | `o` `O` / `a` / `R` / `y` `p` / `:set ic hls is` |
 | 7 | ヘルプと設定 | `:help` / vimrc / 補完（ブラウザで再現できる範囲に調整） |
 
-## 6. データ設計
+## 7. データ設計
 
 言語に依存しない部分（練習テキスト・判定）と、翻訳する部分を分ける。
 
@@ -141,7 +160,7 @@ export default defineLesson({
 { version: 1, lang: "ja", lessons: { "1-3": { cleared: true, stars: 3, bestKeys: 14 } } }
 ```
 
-## 7. 評価と演出
+## 8. 評価と演出
 
 - TODO 達成: 褒めトースト（言葉はランダム）
 - レッスンクリア: 紙吹雪、★評価（最短キー数との差・ヒント使用の有無で ★1〜3）
@@ -149,7 +168,7 @@ export default defineLesson({
 - `prefers-reduced-motion` のときはアニメーションを止める
 - 効果音は第2段階以降（デフォルトはオフ）
 
-## 8. ディレクトリ構成（予定）
+## 9. ディレクトリ構成（予定）
 
 ```
 hjkl-quest/
@@ -167,18 +186,18 @@ hjkl-quest/
 └─ astro.config.mjs       base: "/hjkl-quest/"
 ```
 
-## 9. マイルストーン
+## 10. マイルストーン
 
 | # | 内容 | 完了の目安 |
 |---|---|---|
-| M0 | 環境構築 | Astro プロジェクト作成、GitHub Pages に空ページが公開される |
+| M0 | 環境構築 | Astro プロジェクト作成、本番デプロイと PR プレビューが動く |
 | M1 | **MVP** | Chapter 1 の全レッスンが日英で遊べる。シェル起動、TODO 判定、褒め演出、進捗保存 |
 | M2 | レッスン拡充 | Chapter 2〜7 を追加 |
 | M3 | 磨き込み | ★評価の調整、TODO 折りたたみ、トップページ、効果音 |
 | M4 | スマホ対応 | 独自キーバー（Esc / Ctrl / `:` など）、レイアウト調整 |
 | M5 | 称号・実績 | ランク称号、実績バッジ、共有カード |
 
-## 10. 未決事項
+## 11. 未決事項
 
 - `@replit/codemirror-vim` で再現できないコマンド（`:!cmd`、`:r`、`:help` など）をどう見せるか → M2 着手前に調査
 - Chapter 2 以降で `vim` の入力を省略するか

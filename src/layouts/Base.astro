@@ -1,5 +1,6 @@
 ---
 import { languages, langs, type Lang } from '../i18n/ui';
+import { isPreview } from '../env';
 
 interface Props {
   lang: Lang;
@@ -16,6 +17,7 @@ const pageTitle = title ? `${title} | hjkl-quest` : 'hjkl-quest';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    {isPreview && <meta name="robots" content="noindex, nofollow" />}
     {langs.map((l) => <link rel="alternate" hreflang={l} href={`${base}${l}/`} />)}
     <title>{pageTitle}</title>
   </head>
@@ -24,6 +26,7 @@ const pageTitle = title ? `${title} | hjkl-quest` : 'hjkl-quest';
       <a class="logo" href={`${base}${lang}/`}>
         <span class="keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span><span class="q">-quest</span>
       </a>
+      {isPreview && <span class="preview-badge" title={base}>PREVIEW</span>}
       <nav class="lang" aria-label="Language">
         {
           langs.map((l) => (
@@ -38,11 +41,13 @@ const pageTitle = title ? `${title} | hjkl-quest` : 'hjkl-quest';
       <slot />
     </main>
     <script>
+      import { storagePrefix } from '../env';
+
       // Remember the language the user picked so the root page can redirect next time.
       document.querySelectorAll<HTMLAnchorElement>('.lang a').forEach((a) => {
         a.addEventListener('click', () => {
           try {
-            localStorage.setItem('hjkl-quest:lang', a.dataset.lang ?? '');
+            localStorage.setItem(`${storagePrefix}lang`, a.dataset.lang ?? '');
           } catch {}
         });
       });
@@ -107,6 +112,16 @@ const pageTitle = title ? `${title} | hjkl-quest` : 'hjkl-quest';
   }
   .q {
     color: var(--vim-glow);
+  }
+  .preview-badge {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #1a1200;
+    background: #ffd34d;
+    border-radius: 6px;
+    padding: 3px 8px;
   }
   .lang {
     margin-left: auto;

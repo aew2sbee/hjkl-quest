@@ -1,7 +1,9 @@
 ---
 import { languages, langs } from '../i18n/ui';
+import { isPreview, storagePrefix } from '../env';
 
 const base = import.meta.env.BASE_URL;
+const langKey = `${storagePrefix}lang`;
 ---
 
 <html lang="en">
@@ -9,12 +11,13 @@ const base = import.meta.env.BASE_URL;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    {isPreview && <meta name="robots" content="noindex, nofollow" />}
     <title>hjkl-quest</title>
-    <script is:inline define:vars={{ base, langs }}>
+    <script is:inline define:vars={{ base, langs, langKey }}>
       // Saved choice first, then the browser language, then English.
       let lang = null;
       try {
-        lang = localStorage.getItem('hjkl-quest:lang');
+        lang = localStorage.getItem(langKey);
       } catch {}
       if (!langs.includes(lang)) {
         lang = (navigator.languages || [navigator.language])
