@@ -1,0 +1,475 @@
+<title>hjkl-quest Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<style>
+/* Layout: pop dark "room" around a real-looking Vim window; editor left, quest TODO right, praise toast on the bottom */
+:root {
+  color-scheme: dark;
+  --bg: #0e1712;          /* deep green-black room */
+  --surface: #17251d;     /* pop cards */
+  --surface-2: #203329;
+  --line: #2c4436;
+  --fg: #e8f3ec;
+  --muted: #8fa89a;
+  --vim: #2bb24c;         /* Vim logo green, lifted for dark bg */
+  --vim-deep: #019833;
+  --vim-glow: #7ee08f;
+  --star: #ffd34d;
+  --warn: #ff9f5a;
+  --mode-normal: #5aa9ff;
+  --mode-insert: #2bb24c;
+  --mode-visual: #b48cff;
+  --ed-bg: #0a0d0b;       /* the editor stays terminal-dark */
+  --ed-fg: #d6e2da;
+  --ed-dim: #4a5a50;
+  --ed-tilde: #3a5bd0;
+  --font-ui: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r: 18px;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 120px; display: grid; gap: 18px; }
+
+/* header */
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.logo { font-family: var(--font-mono); font-weight: 700; font-size: 22px; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
+.logo .keys { display: inline-flex; gap: 3px; }
+.logo kbd { background: var(--vim-deep); color: #fff; border-radius: 7px; padding: 1px 7px; box-shadow: 0 3px 0 #06551f; font-family: var(--font-mono); font-size: 18px; }
+.logo span.q { color: var(--vim-glow); }
+.lesson { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 999px; padding: 6px 14px; }
+.lesson b { font-weight: 800; }
+.dots { display: inline-flex; gap: 5px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--vim); }
+.lang { margin-left: auto; display: inline-flex; background: var(--surface); border-radius: 999px; padding: 3px; }
+.lang button { all: unset; cursor: pointer; padding: 5px 12px; border-radius: 999px; color: var(--muted); font-weight: 700; font-size: 13px; }
+.lang button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); }
+.lang button:focus-visible { outline: 2px solid var(--vim-glow); }
+
+.wrap { max-width: 1240px; }
+.app { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.main { display: grid; gap: 14px; min-width: 0; }
+
+/* chapter sidebar */
+.side { background: var(--surface); border-radius: var(--r); padding: 14px 10px; display: grid; gap: 4px; position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); }
+.side h2 { margin: 0 8px 6px; font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+.chapter { display: grid; gap: 2px; }
+.ch-head { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px; font-weight: 700; font-size: 14px; }
+.ch-head .no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); width: 1.6em; }
+.ch-head .prog { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapter.locked .ch-head { color: var(--muted); }
+.chapter.locked .ch-head .prog::before { content: "🔒"; }
+.secs { list-style: none; margin: 0 0 6px; padding: 0 0 0 14px; display: grid; gap: 2px; border-left: 2px solid var(--line); margin-left: 16px; }
+.secs li { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; font-size: 13px; color: var(--muted); }
+.secs li .mk { width: 16px; text-align: center; font-size: 12px; }
+.secs li.done { color: var(--fg); }
+.secs li.done .mk { color: var(--vim); }
+.secs li.now { background: color-mix(in srgb, var(--vim) 20%, transparent); color: var(--fg); font-weight: 700; }
+.secs li.now .mk { color: var(--vim-glow); }
+
+/* top: quest card laid out wide */
+.quest { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 18px; }
+.quest .qtext { display: grid; gap: 6px; }
+.quest .todo { padding: 7px 12px; }
+.quest .qtodo .qactions { justify-content: flex-end; }
+.quest .qtodo { display: grid; gap: 10px; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; padding: 10px; }
+  .side h2, .chapter:not(.current) { display: none; }
+  .chapter.current .secs { display: flex; overflow-x: auto; border: 0; margin: 0; padding: 0; gap: 6px; }
+  .chapter.current .secs li { white-space: nowrap; background: var(--surface-2); }
+  .quest { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* the Vim window */
+.vimwin { background: var(--ed-bg); border-radius: var(--r); overflow: hidden; border: 2px solid var(--line); transition: border-color .2s, box-shadow .2s; position: relative; }
+.vimwin:focus-within { border-color: var(--vim); box-shadow: 0 0 0 4px color-mix(in srgb, var(--vim) 25%, transparent); }
+.titlebar { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: #121815; font-family: var(--font-mono); font-size: 12px; color: var(--ed-dim); }
+.titlebar i { width: 11px; height: 11px; border-radius: 50%; background: #2a332e; }
+.titlebar span { margin-left: 8px; }
+.buffer { font-family: var(--font-mono); font-size: 15px; line-height: 1.7; padding: 8px 0; outline: none; overflow-x: auto; color: var(--ed-fg); cursor: text; }
+.row { display: flex; white-space: pre; }
+.ln { width: 3.2em; text-align: right; padding-right: 1em; color: var(--ed-dim); flex: none; user-select: none; }
+.row.cur .ln { color: var(--star); }
+.row.target .txt { color: #fff; }
+.row .arrow { color: var(--vim-glow); }
+.tilde { color: var(--ed-tilde); padding-left: .9em; }
+.cursor { background: var(--ed-fg); color: var(--ed-bg); border-radius: 2px; }
+.buffer:not(:focus) .cursor { background: transparent; outline: 1px solid var(--ed-fg); color: inherit; }
+.status { display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 13px; background: #18201b; padding: 4px 0; padding-right: 14px; }
+.mode { font-weight: 700; padding: 2px 12px; color: #08111d; background: var(--mode-normal); }
+.status .file { color: var(--ed-fg); }
+.status .pos { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cmdline { font-family: var(--font-mono); font-size: 13px; padding: 5px 14px 8px; min-height: 1.6em; color: var(--ed-fg); }
+.cmdline.err { color: #ff6b6b; }
+.cmdline.ok { color: var(--vim-glow); }
+
+.vimwin.shell .status, .vimwin.shell .cmdline { display: none; }
+.sh { padding: 0 14px; white-space: pre-wrap; }
+.sh .p { color: var(--vim-glow); font-weight: 700; }
+.sh .ghost { color: var(--ed-dim); }
+.sh .err { color: #ff6b6b; }
+.sh .tip { color: var(--star); }
+.sh .caret { display: inline-block; width: .6em; background: var(--ed-fg); animation: blink 1s steps(1) infinite; }
+.buffer:not(:focus) .sh .caret { background: transparent; outline: 1px solid var(--ed-fg); animation: none; }
+.sh .focus-tip { color: var(--muted); }
+.buffer:focus .sh .focus-tip { display: none; }
+@keyframes blink { 50% { opacity: 0; } }
+.vimwin.booting .buffer { animation: boot .35s ease-out; }
+@keyframes boot { from { opacity: 0; transform: scaleY(.96); } }
+.start { position: absolute; inset: 40px 0 62px; display: grid; place-items: center; background: color-mix(in srgb, var(--ed-bg) 72%, transparent); font-weight: 800; font-size: 17px; cursor: pointer; border: 0; color: var(--fg); font-family: var(--font-ui); }
+.start span { background: var(--vim-deep); padding: 10px 20px; border-radius: 999px; box-shadow: 0 4px 0 #06551f; }
+
+/* under-editor strip */
+.under { display: grid; gap: 12px; margin-top: 12px; }
+.keylog { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 13px; min-height: 34px; }
+.keylog kbd { font-family: var(--font-mono); font-size: 14px; background: var(--surface-2); color: var(--fg); border-radius: 8px; padding: 3px 10px; box-shadow: 0 3px 0 var(--line); animation: pop .25s ease-out; }
+.keylog kbd.bad { background: color-mix(in srgb, var(--warn) 30%, var(--surface-2)); }
+@keyframes pop { from { transform: translateY(-6px) scale(1.2); opacity: .3; } }
+.ime { display: flex; gap: 10px; align-items: center; background: color-mix(in srgb, var(--warn) 14%, var(--surface)); border-radius: 12px; padding: 8px 12px; font-size: 13px; }
+.ime b { color: var(--warn); }
+
+.padkeys { display: flex; gap: 8px; flex-wrap: wrap; }
+.padkeys .label { width: 100%; color: var(--muted); font-size: 12px; }
+.padkeys button { font-family: var(--font-mono); font-weight: 700; font-size: 16px; min-width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--fg); box-shadow: 0 4px 0 var(--line); cursor: pointer; }
+.padkeys button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+.padkeys button.esc { background: #3a2a1b; color: var(--warn); }
+
+/* quest card */
+.quest { background: var(--surface); border-radius: var(--r); padding: 18px; display: grid; gap: 14px; }
+.quest h2 { margin: 0; font-size: 13px; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.quest h1 { margin: 0; font-size: 21px; font-weight: 800; text-wrap: balance; line-height: 1.35; }
+.quest p.lead { margin: 0; color: var(--muted); line-height: 1.7; font-size: 14px; }
+.todos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.todo { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); color: var(--muted); transition: background .3s, color .3s, transform .3s; }
+.todo .box { width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--line); display: grid; place-items: center; font-size: 14px; }
+.todo.now { background: color-mix(in srgb, var(--vim) 18%, var(--surface-2)); color: var(--fg); outline: 2px solid var(--vim); }
+.todo.now .box { border-color: var(--vim-glow); }
+.todo.done { color: var(--fg); }
+.todo.done .box { background: var(--vim); border-color: var(--vim); color: #fff; animation: check .45s cubic-bezier(.3,1.8,.5,1); }
+.todo.done .t { text-decoration: line-through; text-decoration-color: var(--vim); text-decoration-thickness: 2px; opacity: .75; }
+@keyframes check { from { transform: scale(.2) rotate(-30deg); } }
+.todo code, .quest code, .toast code { font-family: var(--font-mono); background: var(--ed-bg); color: var(--vim-glow); padding: 1px 6px; border-radius: 6px; font-size: .92em; }
+.qactions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { font-family: var(--font-ui); font-weight: 700; font-size: 13px; border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; background: var(--surface-2); color: var(--fg); }
+.btn:focus-visible, .padkeys button:focus-visible { outline: 2px solid var(--vim-glow); outline-offset: 2px; }
+.hint { font-size: 13px; line-height: 1.7; background: var(--ed-bg); border-radius: 12px; padding: 10px 12px; color: var(--ed-fg); }
+
+/* praise toast */
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 140%); display: flex; align-items: center; gap: 14px; background: var(--surface-2); border: 2px solid var(--vim); border-radius: 20px; padding: 12px 18px; box-shadow: 0 12px 40px #000a; transition: transform .35s cubic-bezier(.3,1.5,.5,1); max-width: calc(100% - 32px); z-index: 5; }
+.toast.show { transform: translate(-50%, 0); }
+.toast.nudge { border-color: var(--warn); }
+.toast .face { font-size: 30px; }
+.toast .msg { font-weight: 800; font-size: 16px; }
+.toast .sub { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.toast .xp { color: var(--star); font-weight: 800; font-family: var(--font-mono); white-space: nowrap; }
+
+.clear { display: none; text-align: center; background: linear-gradient(160deg, color-mix(in srgb, var(--vim) 30%, var(--surface)), var(--surface)); border-radius: var(--r); padding: 18px; gap: 6px; }
+.clear.show { display: grid; animation: pop .5s ease-out; }
+.clear .stars { font-size: 30px; color: var(--star); letter-spacing: .15em; }
+.clear b { font-size: 19px; }
+
+.note { color: var(--muted); font-size: 12px; line-height: 1.7; border-top: 1px dashed var(--line); padding-top: 14px; }
+canvas#fx { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<canvas id="fx"></canvas>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span><span class="q">-quest</span></div>
+    <div class="lesson"><span>Lesson</span><b>1.2</b><span class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></div>
+    <div class="lang" role="group" aria-label="Language">
+      <button aria-pressed="true" id="lang-ja">日本語</button>
+      <button aria-pressed="false" id="lang-en">English</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <nav class="side" aria-label="Chapters">
+      <h2>CHAPTERS</h2>
+      <div class="chapter current">
+        <div class="ch-head"><span class="no">01</span>基本操作<span class="prog">1/5</span></div>
+        <ul class="secs">
+          <li class="done"><span class="mk">✓</span>1.1 カーソル移動</li>
+          <li class="now"><span class="mk">▶</span>1.2 x で削除</li>
+          <li><span class="mk">·</span>1.3 i で挿入</li>
+          <li><span class="mk">·</span>1.4 A で追記</li>
+          <li><span class="mk">·</span>1.5 保存と終了</li>
+        </ul>
+      </div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">02</span>削除コマンド<span class="prog"></span></div></div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">03</span>置換と変更<span class="prog"></span></div></div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">04</span>検索と移動<span class="prog"></span></div></div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">05</span>ファイル操作<span class="prog"></span></div></div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">06</span>オプション<span class="prog"></span></div></div>
+      <div class="chapter locked"><div class="ch-head"><span class="no">07</span>ヘルプと設定<span class="prog"></span></div></div>
+    </nav>
+
+  <div class="main">
+    <aside class="quest">
+      <div class="qtext">
+        <h2>QUEST · 1.2</h2>
+        <h1>x で余計な文字をやっつけよう</h1>
+        <p class="lead">ノーマルモードで <code>x</code> を押すと、カーソルの下の1文字が消えます。<code>---&gt;</code> の行をきれいな文にしよう。</p>
+      </div>
+      <div class="qtodo">
+        <ul class="todos" id="todos"></ul>
+        <div class="hint" id="hint" hidden></div>
+        <div class="qactions">
+          <button class="btn" id="btn-hint">💡 ヒント</button>
+          <button class="btn" id="btn-reset">↺ やり直す</button>
+        </div>
+        <div class="clear" id="clear">
+          <div class="stars" id="stars">★★★</div>
+          <b>Lesson 1.2 クリア！</b>
+          <span id="clearsub">キー数 0 / 最短 0</span>
+        </div>
+      </div>
+    </aside>
+
+    <section>
+      <div class="vimwin">
+        <div class="titlebar"><i></i><i></i><i></i><span>lesson1-2.txt — VIM</span></div>
+        <div class="buffer" id="buf" tabindex="0" aria-label="Vim editor"></div>
+        <div class="status"><span class="mode" id="mode">NORMAL</span><span class="file">lesson1-2.txt [+]</span><span class="pos" id="pos">1,1</span></div>
+        <div class="cmdline" id="cmd"></div>
+      </div>
+      <div class="under">
+        <div class="keylog" id="keylog"><span>押したキー:</span></div>
+        <div class="ime"><b>あ</b> 日本語入力がオンだと動きません。<b>半角英数</b>に切り替えてね（検出したらここに表示）</div>
+        <div class="padkeys" aria-label="On-screen keys">
+          <span class="label">スマホ用キーバー（案）: OSキーボードの上に表示する独自キー</span>
+          <button class="esc" data-k="Escape">Esc</button>
+          <button data-k="h">h</button><button data-k="j">j</button><button data-k="k">k</button><button data-k="l">l</button>
+          <button data-k="x">x</button><button data-k=":">:</button>
+        </div>
+        <p class="note">モックアップです。<code>vim</code> で起動後、<code>h j k l x</code> が実際に動きます。矢印キーを使うと「hjklで！」と言われます。</p>
+      </div>
+    </section>
+  </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="face" id="t-face">🎉</span>
+  <span><div class="msg" id="t-msg"></div><div class="sub" id="t-sub"></div></span>
+  <span class="xp" id="t-xp"></span>
+</div>
+
+<script>
+const START = [
+  "Lesson 1.2: DELETING WITH x",
+  "",
+  "  Move the cursor down to the line marked --->.",
+  "",
+  "---> The ccow jumped ovverr the moon.",
+  "",
+  "  Fix the line by deleting the extra letters.",
+];
+const TARGET_ROW = 4;
+const GOAL = "---> The cow jumped over the moon.";
+const OPTIMAL = 14;
+
+let lines, cur, keys, todoIdx, wrongNudged, hintUsed;
+let phase = 'shell', shIn = '', shHist = [];
+const $ = (id) => document.getElementById(id);
+
+const TODOS = [
+  { html: '<code>j</code> で <code>---&gt;</code> の行まで下りる',
+    hint: '<code>j</code> は下へ1行。4回押してみよう。',
+    done: () => cur.r === TARGET_ROW,
+    praise: ['ナイス移動！', 'j を使いこなしてる！'] },
+  { html: '<code>l</code> で余計な <code>c</code> の上へ移動して <code>x</code>',
+    hint: '<code>l</code> で右へ。<code>ccow</code> の2つ目の c に重ねて <code>x</code>。',
+    done: () => lines[TARGET_ROW].includes("The cow "),
+    praise: ['一撃で消した！', 'x マスターへの第一歩！'] },
+  { html: '<code>ovverr</code> を <code>over</code> に直す',
+    hint: '余計なのは v と r が1つずつ。それぞれに重ねて <code>x</code>。',
+    done: () => lines[TARGET_ROW] === GOAL,
+    praise: ['完璧な文になった！', 'もう x は怖くない！'] },
+];
+
+function reset() {
+  lines = START.slice(); cur = { r: 0, c: 0 }; keys = 0; todoIdx = 0; wrongNudged = false; hintUsed = false;
+  $('keylog').innerHTML = '<span>押したキー:</span>';
+  $('clear').classList.remove('show');
+  $('hint').hidden = true;
+  setCmd('');
+  render(); renderTodos();
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderShell() {
+  document.querySelector('.vimwin').classList.add('shell');
+  const out = ['<div class="sh"><span class="ghost">Welcome to hjkl-quest shell  ~/quest/lesson1</span></div>', '<div class="sh"> </div>'];
+  shHist.forEach(h => out.push(`<div class="sh">${h}</div>`));
+  const ghost = shIn ? '' : '<span class="ghost">  ← vim と入力して Enter</span>';
+  out.push(`<div class="sh"><span class="p">~/quest $</span> ${esc(shIn)}<span class="caret">&nbsp;</span>${ghost}</div>`);
+  out.push('<div class="sh focus-tip">（ここをクリックすると入力できます）</div>');
+  $('buf').innerHTML = out.join('');
+}
+
+function shellKey(key) {
+  if (key === 'Backspace') { shIn = shIn.slice(0, -1); renderShell(); return; }
+  if (key === 'Enter') {
+    const cmd = shIn.trim();
+    shHist.push(`<span class="p">~/quest $</span> ${esc(shIn)}`);
+    shIn = '';
+    if (/^vim?(\s+lesson1-2\.txt)?$/.test(cmd) && cmd.startsWith('vim')) {
+      phase = 'vim';
+      const win = document.querySelector('.vimwin');
+      win.classList.remove('shell'); win.classList.add('booting');
+      setTimeout(() => win.classList.remove('booting'), 400);
+      toast('🚀', 'Vim を起動できた！', '$ vim lesson1-2.txt', '+5 XP');
+      render();
+      return;
+    }
+    if (cmd) {
+      shHist.push(`<span class="err">zsh: command not found: ${esc(cmd.split(/\s+/)[0])}</span>`);
+      shHist.push('<span class="tip">💡 v・i・m の3文字を入力して Enter を押してね</span>');
+    }
+    shHist = shHist.slice(-6);
+    renderShell(); return;
+  }
+  if (key.length === 1) { shIn += key; renderShell(); }
+}
+
+function render() {
+  if (phase === 'shell') { renderShell(); return; }
+  const out = [];
+  lines.forEach((ln, r) => {
+    let txt = '';
+    const chars = ln.length ? ln : ' ';
+    for (let c = 0; c < chars.length; c++) {
+      let ch = esc(chars[c]);
+      if (r === cur.r && c === cur.c) ch = `<span class="cursor">${ch}</span>`;
+      txt += ch;
+    }
+    txt = txt.replace('---&gt;', '<span class="arrow">---&gt;</span>');
+    out.push(`<div class="row${r === cur.r ? ' cur' : ''}${r === TARGET_ROW ? ' target' : ''}"><span class="ln">${r + 1}</span><span class="txt">${txt}</span></div>`);
+  });
+  for (let i = 0; i < 2; i++) out.push('<div class="row"><span class="tilde">~</span></div>');
+  $('buf').innerHTML = out.join('');
+  $('pos').textContent = `${cur.r + 1},${cur.c + 1}`;
+}
+
+function renderTodos() {
+  $('todos').innerHTML = TODOS.map((t, i) => {
+    const cls = i < todoIdx ? 'done' : i === todoIdx ? 'now' : '';
+    return `<li class="todo ${cls}"><span class="box">${i < todoIdx ? '✓' : ''}</span><span class="t">${t.html}</span></li>`;
+  }).join('');
+  document.querySelectorAll('#dots i').forEach((d, i) => d.classList.toggle('on', i <= Math.min(todoIdx, 4)));
+}
+
+function setCmd(text, kind) { const el = $('cmd'); el.textContent = text; el.className = 'cmdline' + (kind ? ' ' + kind : ''); }
+
+function logKey(label, bad) {
+  const k = document.createElement('kbd'); k.textContent = label; if (bad) k.className = 'bad';
+  const log = $('keylog'); log.appendChild(k);
+  while (log.querySelectorAll('kbd').length > 12) log.querySelector('kbd').remove();
+}
+
+let toastTimer;
+function toast(face, msg, sub, xp, nudge) {
+  $('t-face').textContent = face; $('t-msg').textContent = msg; $('t-sub').textContent = sub || ''; $('t-xp').textContent = xp || '';
+  const t = $('toast'); t.classList.toggle('nudge', !!nudge); t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function clampC() { const max = Math.max(0, lines[cur.r].length - 1); if (cur.c > max) cur.c = max; }
+
+function press(key) {
+  if (phase === 'shell') { shellKey(key); return; }
+  if (todoIdx >= TODOS.length) return;
+  const arrows = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l' };
+  if (arrows[key]) {
+    logKey(key.replace('Arrow', '←→↓↑'.slice(0,0)) === key ? { ArrowLeft:'←',ArrowDown:'↓',ArrowUp:'↑',ArrowRight:'→' }[key] : key, true);
+    toast('🙅', `矢印キーじゃなくて ${arrows[key]} で！`, 'hjkl なら手がホームポジションから離れないよ', '', true);
+    return;
+  }
+  if (key === 'Escape') { logKey('Esc'); setCmd(''); return; }
+  if (key.length !== 1) return;
+  keys++;
+  logKey(key);
+  switch (key) {
+    case 'h': if (cur.c > 0) cur.c--; break;
+    case 'l': if (cur.c < lines[cur.r].length - 1) cur.c++; break;
+    case 'j': if (cur.r < lines.length - 1) { cur.r++; clampC(); } break;
+    case 'k': if (cur.r > 0) { cur.r--; clampC(); } break;
+    case 'x': {
+      const ln = lines[cur.r];
+      if (ln.length) { lines[cur.r] = ln.slice(0, cur.c) + ln.slice(cur.c + 1); clampC(); }
+      if (cur.r !== TARGET_ROW && !wrongNudged) { wrongNudged = true; toast('🤔', 'そこは消さなくて大丈夫！', '↺ やり直す でいつでも戻せるよ', '', true); }
+      break;
+    }
+    case ':': setCmd(':  (コマンドは Lesson 1.4 で登場！)'); render(); return;
+    default:
+      setCmd(`"${key}" はまだ習っていないキーだよ。今は h j k l x を使おう`, 'err'); render(); return;
+  }
+  setCmd('');
+  render();
+  check();
+}
+
+function check() {
+  const t = TODOS[todoIdx];
+  if (!t.done()) return;
+  todoIdx++;
+  renderTodos();
+  const p = t.praise[Math.floor(Math.random() * t.praise.length)];
+  if (todoIdx >= TODOS.length) {
+    const s = hintUsed ? 1 : keys <= OPTIMAL + 4 ? 3 : 2;
+    $('stars').textContent = '★'.repeat(s) + '☆'.repeat(3 - s);
+    $('clearsub').textContent = `キー数 ${keys} / 最短 ${OPTIMAL}`;
+    $('clear').classList.add('show');
+    setCmd('"lesson1-2.txt" quest complete!', 'ok');
+    toast('🏆', 'レッスンクリア！', `:echo "${p}"`, '+50 XP');
+    confetti();
+  } else {
+    toast('🎉', p, `TODO ${todoIdx}/${TODOS.length} 達成`, '+10 XP');
+  }
+}
+
+/* confetti in Vim greens + star yellow */
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = $('fx'), ctx = cv.getContext('2d');
+  cv.width = innerWidth; cv.height = innerHeight;
+  const cols = ['#2bb24c', '#7ee08f', '#019833', '#ffd34d', '#5aa9ff'];
+  const ps = Array.from({ length: 140 }, () => ({ x: cv.width / 2, y: cv.height * .55, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4, s: 4 + Math.random() * 6, c: cols[Math.floor(Math.random() * cols.length)], a: Math.random() * 6 }));
+  let f = 0;
+  (function tick() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ps.forEach(p => { p.vy += .35; p.x += p.vx; p.y += p.vy; p.a += .2; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); });
+    if (++f < 150) requestAnimationFrame(tick); else ctx.clearRect(0, 0, cv.width, cv.height);
+  })();
+}
+
+$('buf').addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.isComposing || e.keyCode === 229) { toast('あ', '日本語入力がオンになっているみたい', '半角英数に切り替えてね', '', true); return; }
+  if (e.key === 'Tab') return;
+  e.preventDefault();
+  press(e.key);
+});
+document.querySelectorAll('.padkeys button').forEach(b => b.addEventListener('click', () => press(b.dataset.k)));
+$('btn-reset').addEventListener('click', () => {
+  phase = 'shell'; shIn = ''; shHist = [];
+  reset(); $('buf').focus();
+});
+$('btn-hint').addEventListener('click', () => {
+  const t = TODOS[Math.min(todoIdx, TODOS.length - 1)];
+  hintUsed = true; $('hint').innerHTML = '💡 ' + t.hint; $('hint').hidden = false; $('buf').focus();
+});
+['ja', 'en'].forEach(l => $('lang-' + l).addEventListener('click', () => {
+  $('lang-ja').setAttribute('aria-pressed', l === 'ja'); $('lang-en').setAttribute('aria-pressed', l === 'en');
+  if (l === 'en') toast('🌐', 'English UI is planned', 'モックでは日本語のみ', '');
+}));
+
+reset();
+</script>
