@@ -39,7 +39,9 @@ jobs:
           umbrella-dir: pr-preview
           action: ${{ github.event.action == 'closed' && 'remove' || 'deploy' }}
           wait-for-pages-deployment: false
-      # Prepend the preview URL to the PR description once (the URL is stable per PR).
+      # Add the preview URL to the PR description once (the URL is stable per PR).
+      # It goes right after the "## 確認方法" section, or before the trailing
+      # "🤖 Generated" line / at the end when there is no such section.
       - name: Add preview URL to PR description
         if: github.event.action != 'closed'
         env:
@@ -50,5 +52,9 @@ jobs:
           marker='<!-- pr-preview-url -->'
           body=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json body -q .body)
           if grep -qF "$marker" <<<"$body"; then exit 0; fi
-          printf '%s\n## Preview:\n\n%s\n\n%s\n' "$marker" "$URL" "$body" \
-            | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
+          printf '%s\n' "$body" | awk -v sec="$marker\n## 開発環境URL\n\n$URL\n" '
+            index($0, "## 確認方法") == 1 { in_check = 1; print; next }
+            !done && ((in_check && index($0, "## ") == 1) || index($0, "🤖") == 1) { print sec; done = 1 }
+            { print }
+            END { if (!done) print "\n" sec }
+          ' | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
