@@ -1,7 +1,7 @@
 name: PR Preview
 
 # Build each pull request and publish it to gh-pages under pr-preview/pr-<number>/.
-# The preview URL is posted as a PR comment and removed when the PR is closed.
+# The preview URL is added to the PR description (and posted as a comment); the preview is removed when the PR is closed.
 
 on:
   pull_request:
@@ -39,3 +39,16 @@ jobs:
           umbrella-dir: pr-preview
           action: ${{ github.event.action == 'closed' && 'remove' || 'deploy' }}
           wait-for-pages-deployment: false
+      # Prepend the preview URL to the PR description once (the URL is stable per PR).
+      - name: Add preview URL to PR description
+        if: github.event.action != 'closed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.number }}/
+        run: |
+          marker='<!-- pr-preview-url -->'
+          body=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json body -q .body)
+          if grep -qF "$marker" <<<"$body"; then exit 0; fi
+          printf '%s\n🔍 **Preview:** %s\n\n%s\n' "$marker" "$URL" "$body" \
+            | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
