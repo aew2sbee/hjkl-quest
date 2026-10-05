@@ -10,8 +10,6 @@ npm run dev      # http://localhost:4321/hjkl-quest/
 npm run build
 ```
 
-Plan and mockup: [docs/PLAN.md](docs/PLAN.md)
-
 Every pull request gets a preview at `https://aew2sbee.github.io/hjkl-quest/pr-preview/pr-<number>/`. Changes reach `main` only through a reviewed PR.
 
 ## Credits
