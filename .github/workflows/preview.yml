@@ -11,12 +11,17 @@ permissions:
   contents: write
   pull-requests: write
 
+# One group per PR: a shared group keeps only one pending run, so a new preview
+# could cancel a queued production deploy or another PR's preview removal.
+# Concurrent pushes to gh-pages are retried by the deploy action.
 concurrency:
-  group: gh-pages
+  group: gh-pages-pr-${{ github.event.number }}
   cancel-in-progress: false
 
 jobs:
   preview:
+    # Fork PRs get a read-only token, so they cannot publish a preview.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
