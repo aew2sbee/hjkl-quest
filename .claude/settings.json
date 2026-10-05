@@ -1,7 +1,7 @@
 {
   "enabledPlugins": {
-    "code-review@anthropic-plugin-directory": true,
-    "commit-commands@anthropic-plugin-directory": true,
+    "code-review@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
     "explanatory-output-style@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "claude-security@claude-plugins-official": true,
