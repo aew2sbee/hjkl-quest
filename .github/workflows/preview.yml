@@ -11,12 +11,17 @@ permissions:
   contents: write
   pull-requests: write
 
+# One group per PR: a shared group keeps only one pending run, so a new preview
+# could cancel a queued production deploy or another PR's preview removal.
+# Concurrent pushes to gh-pages are retried by the deploy action.
 concurrency:
-  group: gh-pages
+  group: gh-pages-pr-${{ github.event.number }}
   cancel-in-progress: false
 
 jobs:
   preview:
+    # Fork PRs get a read-only token, so they cannot publish a preview.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -39,7 +44,9 @@ jobs:
           umbrella-dir: pr-preview
           action: ${{ github.event.action == 'closed' && 'remove' || 'deploy' }}
           wait-for-pages-deployment: false
-      # Prepend the preview URL to the PR description once (the URL is stable per PR).
+      # Add the preview URL to the PR description once (the URL is stable per PR).
+      # It goes right after the "## 確認方法" section, or before the trailing
+      # "🤖 Generated" line / at the end when there is no such section.
       - name: Add preview URL to PR description
         if: github.event.action != 'closed'
         env:
@@ -50,5 +57,9 @@ jobs:
           marker='<!-- pr-preview-url -->'
           body=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json body -q .body)
           if grep -qF "$marker" <<<"$body"; then exit 0; fi
-          printf '%s\n🔍 **Preview:** %s\n\n%s\n' "$marker" "$URL" "$body" \
-            | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
+          printf '%s\n' "$body" | awk -v sec="$marker\n## 開発環境URL\n\n$URL\n" '
+            index($0, "## 確認方法") == 1 { in_check = 1; print; next }
+            !done && ((in_check && index($0, "## ") == 1) || index($0, "🤖") == 1) { print sec; done = 1 }
+            { print }
+            END { if (!done) print "\n" sec }
+          ' | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
