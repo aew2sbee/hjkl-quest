@@ -1,36 +1,29 @@
 ---
-import { languages, langs } from '../i18n/ui';
-import { isPreview, storagePrefix } from '../env';
-
-const base = import.meta.env.BASE_URL;
-const langKey = `${storagePrefix}lang`;
+import Base from '../layouts/Base.astro';
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
-    {isPreview && <meta name="robots" content="noindex, nofollow" />}
-    <title>hjkl-quest</title>
-    <script is:inline define:vars={{ base, langs, langKey }}>
-      // Saved choice first, then the browser language, then English.
-      let lang = null;
-      try {
-        lang = localStorage.getItem(langKey);
-      } catch {}
-      if (!langs.includes(lang)) {
-        lang = (navigator.languages || [navigator.language])
-          .map((l) => l.slice(0, 2).toLowerCase())
-          .find((l) => langs.includes(l)) || 'en';
-      }
-      location.replace(base + lang + '/');
-    </script>
-  </head>
-  <body style="background:#0e1712;color:#e8f3ec;font-family:sans-serif;padding:24px">
-    <p>Choose a language / 言語を選択してください</p>
-    <ul>
-      {langs.map((l) => <li><a style="color:#7ee08f" href={`${base}${l}/`}>{languages[l]}</a></li>)}
-    </ul>
-  </body>
-</html>
+<Base>
+  <section class="hero">
+    <p class="tagline">TODOをクリアしながら、ブラウザで楽しくVimを覚えよう</p>
+    <p class="soon">現在準備中です。もうすぐ最初のクエストが遊べるようになります。</p>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 24px;
+    display: grid;
+    gap: 8px;
+  }
+  .tagline {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .soon {
+    margin: 0;
+    color: var(--muted);
+  }
+</style>

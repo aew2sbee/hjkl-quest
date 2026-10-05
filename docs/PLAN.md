@@ -3,7 +3,7 @@
 vimtutor の内容を「TODO を1つずつ達成して褒められる」形式で学べる Web サービス。GitHub Pages で公開する。
 
 - モックアップ: [docs/mockup.html](./mockup.html)
-- 最終更新: 2026-10-04
+- 最終更新: 2026-10-05
 
 ---
 
@@ -13,7 +13,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 |---|---|
 | リポジトリ名 | `hjkl-quest`（公開 URL: `https://<user>.github.io/hjkl-quest/`） |
 | 対象ユーザー | Vim を一度も触ったことがない完全な初心者 |
-| 言語 | 日本語・英語（UI と説明文のみ翻訳。練習テキストは両言語とも英語） |
+| 言語 | 日本語のみ（UI と説明文は日本語、練習テキストは英語） |
 | 判定 | **指定コマンドの使用を必須**とする（結果が合っていても別の方法なら再挑戦を促す） |
 | 見た目 | ポップなダーク UI ＋ エディタ内部は本物の Vim らしさを維持。色は Vim のグリーンを基調 |
 | レイアウト | 左: チャプター一覧 / 右上: クエスト説明＋TODO（縦並び） / 右下: エディタ（低め） |
@@ -26,7 +26,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 
 | 項目 | 採用 | 理由 |
 |---|---|---|
-| フレームワーク | Astro + TypeScript | 言語ごとのページを静的に出力でき、GitHub Pages と相性が良い |
+| フレームワーク | Astro + TypeScript | ページを静的に出力でき、GitHub Pages と相性が良い |
 | エディタ | CodeMirror 6 + `@replit/codemirror-vim` | Vim エミュレーションの完成度が高く、キー入力やコマンド実行のイベントを取得できる |
 | 状態保存 | localStorage | サーバー不要 |
 | 演出 | 自前の canvas 紙吹雪（または canvas-confetti） | 軽量 |
@@ -52,19 +52,14 @@ PR を閉じるとプレビューは自動で削除
 - 本番とプレビューは同じドメインなので、localStorage のキーは公開パスごとに分ける
 - main への直接 push はしない
 
-## 4. URL と多言語対応
+## 4. URL
 
 ```
-/hjkl-quest/                 ブラウザの言語（保存済みの選択を優先）で /ja/ か /en/ へ移動
-                             JS が無効なときのために言語選択リンクも置く
-/hjkl-quest/ja/              日本語トップ（チャプター一覧）
-/hjkl-quest/ja/lesson/1-3/   レッスン画面
-/hjkl-quest/en/...           英語版
+/hjkl-quest/                 トップ（チャプター一覧）
+/hjkl-quest/lesson/1-3/      レッスン画面
 ```
 
-- ヘッダーの `日本語 / English` で、同じレッスンのまま言語を切り替えられる
-- 選んだ言語は localStorage に保存する
-- 翻訳ファイルに抜けがあればビルドを失敗させる
+- 日本語のみ対応する。言語の振り分けや切り替えは持たない
 
 ## 5. 画面仕様
 
@@ -118,12 +113,10 @@ PR を閉じるとプレビューは自動で削除
 
 ## 7. データ設計
 
-言語に依存しない部分（練習テキスト・判定）と、翻訳する部分を分ける。
+1 レッスン 1 ファイルで、練習テキスト・判定と日本語の文言をまとめて定義する。
 
 ```
-src/lessons/1-3.ts         練習テキスト・TODO の判定・必須コマンド・最短キー数
-src/i18n/ja/1-3.json       タイトル・説明・TODO 文・ヒント・褒め言葉
-src/i18n/en/1-3.json
+src/lessons/1-3.ts         練習テキスト・TODO の判定・必須コマンド・最短キー数・タイトル・説明・TODO 文・ヒント
 ```
 
 ```ts
@@ -157,7 +150,7 @@ export default defineLesson({
 
 ### 進捗データ（localStorage）
 ```ts
-{ version: 1, lang: "ja", lessons: { "1-3": { cleared: true, stars: 3, bestKeys: 14 } } }
+{ version: 1, lessons: { "1-3": { cleared: true, stars: 3, bestKeys: 14 } } }
 ```
 
 ## 8. 評価と演出
@@ -178,10 +171,9 @@ hjkl-quest/
 ├─ src/
 │  ├─ components/         Sidebar, QuestPanel, VimEditor, Shell, Toast, KeyLog
 │  ├─ engine/             判定エンジン・キー履歴・進捗保存
-│  ├─ lessons/            レッスン定義（言語共通）
-│  ├─ i18n/{ja,en}/       翻訳
+│  ├─ lessons/            レッスン定義（文言を含む）
 │  ├─ layouts/
-│  └─ pages/[lang]/       index.astro, lesson/[id].astro
+│  └─ pages/              index.astro, lesson/[id].astro
 ├─ tests/
 └─ astro.config.mjs       base: "/hjkl-quest/"
 ```
@@ -191,7 +183,7 @@ hjkl-quest/
 | # | 内容 | 完了の目安 |
 |---|---|---|
 | M0 | 環境構築 | Astro プロジェクト作成、本番デプロイと PR プレビューが動く |
-| M1 | **MVP** | Chapter 1 の全レッスンが日英で遊べる。シェル起動、TODO 判定、褒め演出、進捗保存 |
+| M1 | **MVP** | Chapter 1 の全レッスンが遊べる。シェル起動、TODO 判定、褒め演出、進捗保存 |
 | M2 | レッスン拡充 | Chapter 2〜7 を追加 |
 | M3 | 磨き込み | ★評価の調整、TODO 折りたたみ、トップページ、効果音 |
 | M4 | スマホ対応 | 独自キーバー（Esc / Ctrl / `:` など）、レイアウト調整 |

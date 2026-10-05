@@ -42,10 +42,6 @@ header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .dots { display: inline-flex; gap: 5px; }
 .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
 .dots i.on { background: var(--vim); }
-.lang { margin-left: auto; display: inline-flex; background: var(--surface); border-radius: 999px; padding: 3px; }
-.lang button { all: unset; cursor: pointer; padding: 5px 12px; border-radius: 999px; color: var(--muted); font-weight: 700; font-size: 13px; }
-.lang button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); }
-.lang button:focus-visible { outline: 2px solid var(--vim-glow); }
 
 .wrap { max-width: 1240px; }
 .app { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -182,10 +178,6 @@ canvas#fx { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
   <header>
     <div class="logo"><span class="keys"><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd></span><span class="q">-quest</span></div>
     <div class="lesson"><span>Lesson</span><b>1.2</b><span class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i></span></div>
-    <div class="lang" role="group" aria-label="Language">
-      <button aria-pressed="true" id="lang-ja">日本語</button>
-      <button aria-pressed="false" id="lang-en">English</button>
-    </div>
   </header>
 
   <div class="app">
@@ -466,10 +458,6 @@ $('btn-hint').addEventListener('click', () => {
   const t = TODOS[Math.min(todoIdx, TODOS.length - 1)];
   hintUsed = true; $('hint').innerHTML = '💡 ' + t.hint; $('hint').hidden = false; $('buf').focus();
 });
-['ja', 'en'].forEach(l => $('lang-' + l).addEventListener('click', () => {
-  $('lang-ja').setAttribute('aria-pressed', l === 'ja'); $('lang-en').setAttribute('aria-pressed', l === 'en');
-  if (l === 'en') toast('🌐', 'English UI is planned', 'モックでは日本語のみ', '');
-}));
 
 reset();
 </script>
