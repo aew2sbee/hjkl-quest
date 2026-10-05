@@ -50,5 +50,5 @@ jobs:
           marker='<!-- pr-preview-url -->'
           body=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json body -q .body)
           if grep -qF "$marker" <<<"$body"; then exit 0; fi
-          printf '%s\n🔍 **Preview:** %s\n\n%s\n' "$marker" "$URL" "$body" \
+          printf '%s\n## Preview:\n\n%s\n\n%s\n' "$marker" "$URL" "$body" \
             | gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
