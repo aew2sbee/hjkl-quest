@@ -1,6 +1,5 @@
 {
   "enabledPlugins": {
-    "claude-security@anthropic-plugin-directory": true,
     "code-review@anthropic-plugin-directory": true,
     "commit-commands@anthropic-plugin-directory": true,
     "explanatory-output-style@claude-plugins-official": true,
