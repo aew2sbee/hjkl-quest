@@ -151,3 +151,6 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results/
 playwright-report/
+
+# Local copy of vimtutor ja for lesson design. Do not commit (see CLAUDE.md).
+/reference/
