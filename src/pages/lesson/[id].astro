@@ -71,6 +71,7 @@ const next = nextLesson(lesson.id);
   const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
   const keyLabels: Record<string, string> = {
     Escape: 'Esc',
+    Process: 'IME',
     ' ': 'Space',
     ArrowLeft: '←',
     ArrowDown: '↓',
@@ -137,6 +138,11 @@ const next = nextLesson(lesson.id);
       setCmdline('');
     } else if (verdict === 'arrow') {
       toast('🙅', `矢印キーじゃなくて ${hjklFor(name)} で！`, 'hjkl なら手がホームポジションから離れないよ', true);
+    } else if (verdict === 'ime') {
+      setCmdline('日本語入力がオンになっているよ。オフにしてから押そう', 'err');
+    } else if (verdict === 'not-text') {
+      const why = name === 'Enter' ? 'Enter を押すと行が分かれてしまうので使えないよ' : `挿入モードでは "${label}" は使えないよ`;
+      setCmdline(`${why}。文字・Space・Backspace で入力して、終わったら Esc で戻ろう`, 'err');
     } else {
       setCmdline(`"${label}" はまだ習っていないキーだよ。今は ${lesson.keys.join(' ')} を使おう`, 'err');
     }
