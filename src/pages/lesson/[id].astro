@@ -1,0 +1,363 @@
+---
+import QuestPanel from '../../components/QuestPanel.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import Base from '../../layouts/Base.astro';
+import { lessons } from '../../lessons';
+import type { Lesson } from '../../lessons/types';
+
+export function getStaticPaths() {
+  return Object.values(lessons).map((lesson) => ({ params: { id: lesson.id }, props: { lesson } }));
+}
+
+const { lesson } = Astro.props as { lesson: Lesson };
+---
+
+<Base title={`${lesson.id.replace('-', '.')} ${lesson.title}`}>
+  <div class="app" data-lesson={lesson.id}>
+    <Sidebar current={lesson.id} />
+    <div class="main">
+      <QuestPanel lesson={lesson} />
+      <section aria-label="エディタ">
+        <div class="vimwin">
+          <div class="titlebar" aria-hidden="true"><i></i><i></i><i></i><span>{lesson.fileName} — VIM</span></div>
+          <div id="editor"></div>
+          <div class="status">
+            <span class="mode" id="mode">NORMAL</span>
+            <span class="file">{lesson.fileName}</span>
+            <span class="pos" id="pos">{lesson.start.line + 1},{lesson.start.ch + 1}</span>
+          </div>
+          <div class="cmdline" id="cmdline" aria-live="polite"></div>
+        </div>
+        <div class="keylog" id="keylog" aria-hidden="true"><span>押したキー:</span></div>
+      </section>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span class="face" id="toast-face"></span>
+    <span><span class="msg" id="toast-msg"></span><span class="sub" id="toast-sub"></span></span>
+  </div>
+</Base>
+
+<script>
+  import { createLessonEditor } from '../../engine/editor';
+  import { advance, hjklFor, type KeyVerdict } from '../../engine/judge';
+  import { lessons } from '../../lessons';
+  import type { Snapshot } from '../../lessons/types';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const lesson = lessons[document.querySelector<HTMLElement>('[data-lesson]')!.dataset.lesson!];
+  const todoEls = [...document.querySelectorAll<HTMLElement>('[data-todo]')];
+  const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+  const keyLabels: Record<string, string> = {
+    Escape: 'Esc',
+    ' ': 'Space',
+    ArrowLeft: '←',
+    ArrowDown: '↓',
+    ArrowUp: '↑',
+    ArrowRight: '→',
+  };
+
+  let done = 0;
+  let keyCount = 0;
+
+  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange });
+
+  function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {
+    const label = keyLabels[name] ?? name;
+    logKey(label, verdict !== 'pass');
+    if (verdict === 'pass') {
+      keyCount++;
+      setCmdline('');
+    } else if (verdict === 'arrow') {
+      toast('🙅', `矢印キーじゃなくて ${hjklFor(name)} で！`, 'hjkl なら手がホームポジションから離れないよ', true);
+    } else {
+      setCmdline(`"${label}" はまだ習っていないキーだよ。今は ${lesson.keys.join(' ')} を使おう`, 'err');
+    }
+  }
+
+  function onChange(s: Snapshot) {
+    $('pos').textContent = `${s.cursor.line + 1},${s.cursor.ch + 1}`;
+    const mode = $('mode');
+    mode.textContent = s.mode.toUpperCase();
+    mode.dataset.mode = s.mode;
+
+    const next = advance(lesson, done, s);
+    if (next === done) return;
+    const finished = lesson.todos[next - 1];
+    done = next;
+    renderTodos();
+    if (done < lesson.todos.length) {
+      toast('🎉', pick(finished.praise), `TODO ${done}/${lesson.todos.length} 達成`);
+    } else {
+      $('clear-sub').textContent = `キー数 ${keyCount}（最短 ${lesson.optimalKeys}）`;
+      $('clear').hidden = false;
+      setCmdline(`"${lesson.fileName}" quest complete!`, 'ok');
+      toast('🏆', 'レッスンクリア！', pick(finished.praise));
+    }
+  }
+
+  function renderTodos() {
+    todoEls.forEach((el, i) => {
+      el.classList.toggle('done', i < done);
+      el.classList.toggle('now', i === done);
+    });
+    editor.setTarget(lesson.todos[done]?.target ?? null);
+  }
+
+  function setCmdline(text: string, kind?: 'err' | 'ok') {
+    const el = $('cmdline');
+    el.textContent = text;
+    el.className = kind ? `cmdline ${kind}` : 'cmdline';
+  }
+
+  function logKey(label: string, bad: boolean) {
+    const k = document.createElement('kbd');
+    k.textContent = label;
+    if (bad) k.className = 'bad';
+    const log = $('keylog');
+    log.append(k);
+    const all = log.querySelectorAll('kbd');
+    if (all.length > 12) all[0].remove();
+  }
+
+  let toastTimer: number | undefined;
+  function toast(face: string, msg: string, sub = '', nudge = false) {
+    $('toast-face').textContent = face;
+    $('toast-msg').textContent = msg;
+    $('toast-sub').textContent = sub;
+    const t = $('toast');
+    t.classList.toggle('nudge', nudge);
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  $('btn-hint').addEventListener('click', () => {
+    const hint = $('hint');
+    hint.innerHTML = `💡 ${lesson.todos[Math.min(done, lesson.todos.length - 1)].hint}`;
+    hint.hidden = false;
+    editor.focus();
+  });
+
+  $('btn-reset').addEventListener('click', () => {
+    done = 0;
+    keyCount = 0;
+    editor.reset();
+    renderTodos();
+    onChange(editor.snapshot());
+    $('keylog').replaceChildren($('keylog').firstElementChild!);
+    $('hint').hidden = true;
+    $('clear').hidden = true;
+    setCmdline('');
+    editor.focus();
+  });
+
+  renderTodos();
+  editor.focus();
+</script>
+
+<style>
+  .app {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .main {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+  @media (max-width: 900px) {
+    .app {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .vimwin {
+    background: var(--ed-bg);
+    border-radius: var(--r);
+    overflow: hidden;
+    border: 2px solid var(--line);
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+  .vimwin:focus-within {
+    border-color: var(--vim);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--vim) 25%, transparent);
+  }
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 14px;
+    background: #121815;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ed-dim);
+  }
+  .titlebar i {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #2a332e;
+  }
+  .titlebar span {
+    margin-left: 8px;
+  }
+
+  /* CodeMirror builds its DOM at runtime, so these rules are global. */
+  #editor :global(.cm-editor) {
+    background: var(--ed-bg);
+    color: var(--ed-fg);
+    font-size: 15px;
+    padding: 8px 0;
+  }
+  #editor :global(.cm-editor.cm-focused) {
+    outline: none;
+  }
+  #editor :global(.cm-scroller) {
+    font-family: var(--font-mono);
+    line-height: 1.7;
+  }
+  #editor :global(.cm-gutters) {
+    background: transparent;
+    border: 0;
+    color: var(--ed-dim);
+  }
+  #editor :global(.cm-lineNumbers .cm-gutterElement) {
+    padding: 0 1em 0 1.2em;
+  }
+  #editor :global(.cm-editor .cm-fat-cursor) {
+    background: var(--ed-fg);
+    color: var(--ed-bg) !important;
+  }
+  #editor :global(.cm-editor:not(.cm-focused) .cm-fat-cursor) {
+    background: none;
+    outline: 1px solid var(--ed-fg);
+  }
+  #editor :global(.cm-target) {
+    color: var(--star);
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--star);
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: #18201b;
+    padding: 4px 14px 4px 0;
+  }
+  .mode {
+    font-weight: 700;
+    padding: 2px 12px;
+    color: #08111d;
+    background: var(--mode-normal);
+  }
+  .mode[data-mode='insert'] {
+    background: var(--mode-insert);
+  }
+  .mode[data-mode='visual'] {
+    background: var(--mode-visual);
+  }
+  .file {
+    color: var(--ed-fg);
+  }
+  .pos {
+    margin-left: auto;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .cmdline {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 5px 14px 8px;
+    min-height: 1.6em;
+    color: var(--ed-fg);
+  }
+  .cmdline.err {
+    color: #ff6b6b;
+  }
+  .cmdline.ok {
+    color: var(--vim-glow);
+  }
+
+  .keylog {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    min-height: 34px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .keylog :global(kbd) {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    background: var(--surface-2);
+    color: var(--fg);
+    border-radius: 8px;
+    padding: 3px 10px;
+    box-shadow: 0 3px 0 var(--line);
+    animation: pop 0.25s ease-out;
+  }
+  .keylog :global(kbd.bad) {
+    background: color-mix(in srgb, var(--warn) 30%, var(--surface-2));
+  }
+  @keyframes pop {
+    from {
+      transform: translateY(-6px) scale(1.2);
+      opacity: 0.3;
+    }
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translate(-50%, 160%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface-2);
+    border: 2px solid var(--vim);
+    border-radius: 20px;
+    padding: 12px 18px;
+    box-shadow: 0 12px 40px #000a;
+    transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+    max-width: calc(100% - 32px);
+    z-index: 5;
+  }
+  .toast.show {
+    transform: translate(-50%, 0);
+  }
+  .toast.nudge {
+    border-color: var(--warn);
+  }
+  .face {
+    font-size: 30px;
+  }
+  .msg {
+    display: block;
+    font-weight: 800;
+    font-size: 16px;
+  }
+  .sub {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .toast,
+    .keylog :global(kbd) {
+      transition: none;
+      animation: none;
+    }
+  }
+</style>
