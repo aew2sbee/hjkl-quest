@@ -157,11 +157,11 @@ const next = nextLesson(lesson.id);
     mode.dataset.mode = s.mode;
 
     const next = advance(lesson, done, s);
-    const finished = lesson.todos[next - 1];
     const advanced = next > done;
     done = next;
     showHighlight(s.lines);
     if (!advanced) return;
+    const finished = lesson.todos[done - 1];
     renderTodos();
     if (done < lesson.todos.length) {
       toast('🎉', pick(finished.praise), `TODO ${done}/${lesson.todos.length} 達成`);
