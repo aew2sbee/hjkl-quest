@@ -1,0 +1,173 @@
+---
+import { chapters, lessons } from '../lessons';
+
+interface Props {
+  /** Id of the lesson being played. */
+  current: string;
+}
+
+const { current } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<nav class="side" aria-label="チャプター">
+  <h2>CHAPTERS</h2>
+  {
+    chapters.map((ch) => {
+      const isCurrent = ch.lessons.some((l) => l.id === current);
+      const playable = ch.lessons.filter((l) => l.id in lessons).length;
+      return (
+        <div class:list={['chapter', { current: isCurrent, locked: playable === 0 }]}>
+          <div class="ch-head">
+            <span class="no">{String(ch.no).padStart(2, '0')}</span>
+            {ch.title}
+          </div>
+          {isCurrent && (
+            <ul class="secs">
+              {ch.lessons.map((l) => {
+                const no = l.id.replace('-', '.');
+                if (l.id === current)
+                  return (
+                    <li class="now" aria-current="page">
+                      <span class="mk">▶</span>
+                      {no} {l.title}
+                    </li>
+                  );
+                if (l.id in lessons)
+                  return (
+                    <li>
+                      <a href={`${base}lesson/${l.id}/`}>
+                        <span class="mk">·</span>
+                        {no} {l.title}
+                      </a>
+                    </li>
+                  );
+                return (
+                  <li class="soon">
+                    <span class="mk">·</span>
+                    {no} {l.title}
+                    <span class="tag">準備中</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      );
+    })
+  }
+</nav>
+
+<style>
+  .side {
+    background: var(--surface);
+    border-radius: var(--r);
+    padding: 14px 10px;
+    display: grid;
+    gap: 4px;
+    position: sticky;
+    top: 16px;
+  }
+  h2 {
+    margin: 0 8px 6px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .chapter {
+    display: grid;
+    gap: 2px;
+  }
+  .ch-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .no {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    width: 1.6em;
+  }
+  .locked .ch-head {
+    color: var(--muted);
+  }
+  .locked .ch-head::after {
+    content: '🔒';
+    margin-left: auto;
+    font-size: 11px;
+  }
+  .secs {
+    list-style: none;
+    margin: 0 0 6px 16px;
+    padding: 0 0 0 14px;
+    display: grid;
+    gap: 2px;
+    border-left: 2px solid var(--line);
+  }
+  li,
+  li a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  li {
+    padding: 5px 8px;
+    border-radius: 8px;
+  }
+  li a {
+    text-decoration: none;
+  }
+  li a:hover {
+    color: var(--fg);
+  }
+  .mk {
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .now {
+    background: color-mix(in srgb, var(--vim) 20%, transparent);
+    color: var(--fg);
+    font-weight: 700;
+  }
+  .now .mk {
+    color: var(--vim-glow);
+  }
+  .soon {
+    opacity: 0.6;
+  }
+  .tag {
+    margin-left: auto;
+    font-size: 10px;
+  }
+
+  @media (max-width: 900px) {
+    .side {
+      position: static;
+      padding: 10px;
+    }
+    h2,
+    .chapter:not(.current) {
+      display: none;
+    }
+    .secs {
+      display: flex;
+      overflow-x: auto;
+      border: 0;
+      margin: 0;
+      padding: 0;
+      gap: 6px;
+    }
+    li {
+      white-space: nowrap;
+      background: var(--surface-2);
+    }
+  }
+</style>

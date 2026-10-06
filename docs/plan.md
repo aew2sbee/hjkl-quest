@@ -58,8 +58,8 @@ hjkl-quest/
 ├─ docs/                  計画書・仕様書・レッスン設計・モックアップ
 ├─ public/
 ├─ src/
-│  ├─ components/         Sidebar, QuestPanel, VimEditor, Shell, Toast, KeyLog
-│  ├─ engine/             判定エンジン・キー履歴・進捗保存
+│  ├─ components/         Sidebar, QuestPanel（Shell などは必要になったら足す）
+│  ├─ engine/             judge.ts（判定・キーの振り分け）、editor.ts（CodeMirror + Vim の準備）、進捗保存
 │  ├─ lessons/            レッスン定義（文言を含む）
 │  ├─ layouts/
 │  ├─ pages/              index.astro, lesson/[id].astro
