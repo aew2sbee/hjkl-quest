@@ -1,10 +1,11 @@
 import lesson1_1 from './1-1';
 import lesson1_2 from './1-2';
+import lesson1_3 from './1-3';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {

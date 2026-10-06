@@ -103,7 +103,7 @@ export default defineLesson({
       require: { commands: ["x"], forbid: ["arrows"] },
     },
   ],
-  optimalKeys: 29, // 行頭から hjkl と x だけで直したときのキー数
+  optimalKeys: 32, // シェルの vim と Enter（4キー）＋ 行頭から hjkl と x だけで直したときのキー数
 });
 ```
 
@@ -120,7 +120,7 @@ export default defineLesson({
 キーには `src/env.ts` の `storagePrefix` を付ける。
 
 ```ts
-{ version: 1, lessons: { "1-3": { cleared: true, stars: 3, bestKeys: 29 } } }
+{ version: 1, lessons: { "1-3": { cleared: true, stars: 3, bestKeys: 32 } } }
 ```
 
 ## 5. 評価と演出

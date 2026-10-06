@@ -83,6 +83,8 @@ const next = nextLesson(lesson.id);
   let ran: string[] = [];
   let done = 0;
   let keyCount = 0;
+  // Tell the learner only once per attempt that the text can no longer reach the goal.
+  let stuckNoticed = false;
 
   const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', {
@@ -103,6 +105,7 @@ const next = nextLesson(lesson.id);
     if (cmd.kind === 'vim') {
       ran = [...ran, 'vim'];
       editor.reset();
+      stuckNoticed = false;
       setCmdline('');
       show('vim');
       judge();
@@ -140,6 +143,10 @@ const next = nextLesson(lesson.id);
 
   function judge() {
     const s: Snapshot = { ...editor.snapshot(), screen, ran };
+    if (!stuckNoticed && lesson.stuck?.(s)) {
+      stuckNoticed = true;
+      toast('🤔', '消しすぎたかも', '↺ やり直すで最初に戻せるよ', true);
+    }
     $('pos').textContent = `${s.cursor.line + 1},${s.cursor.ch + 1}`;
     const mode = $('mode');
     mode.textContent = s.mode.toUpperCase();
@@ -210,6 +217,7 @@ const next = nextLesson(lesson.id);
     done = 0;
     keyCount = 0;
     ran = [];
+    stuckNoticed = false;
     editor.reset();
     shell.reset();
     renderTodos();

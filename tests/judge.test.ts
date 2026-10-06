@@ -3,6 +3,7 @@ import { advance, classifyKey, keyName } from '../src/engine/judge';
 import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
+import lesson1_3 from '../src/lessons/1-3';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
@@ -100,6 +101,38 @@ describe('lesson 1-2', () => {
   });
 });
 
+describe('lesson 1-3', () => {
+  const line = (text: string): Snapshot => ({
+    lines: [text],
+    cursor: { line: 0, ch: 0 },
+    mode: 'normal',
+    screen: 'vim',
+    ran: ['vim'],
+  });
+
+  it('is done after fixing all three words', () => {
+    let done = advance(lesson1_3, 0, line('---> My dog likess to chasee red balls.'));
+    expect(done).toBe(1);
+    done = advance(lesson1_3, done, line('---> My dog likes to chasee red balls.'));
+    expect(done).toBe(2);
+    done = advance(lesson1_3, done, line('---> My dog likes to chase red balls.'));
+    expect(done).toBe(3);
+  });
+
+  it('catches up when the words are fixed out of order', () => {
+    const fixedLater = advance(lesson1_3, 0, line('---> My doog likes to chase red balls.'));
+    expect(fixedLater).toBe(0);
+    expect(advance(lesson1_3, fixedLater, line('---> My dog likes to chase red balls.'))).toBe(3);
+  });
+
+  it('is stuck only when a needed letter is gone', () => {
+    expect(lesson1_3.stuck!(line(lesson1_3.buffer[0]))).toBe(false);
+    expect(lesson1_3.stuck!(line('---> My dog likes to chase red balls.'))).toBe(false);
+    expect(lesson1_3.stuck!(line('---> My og likess to chasee red balls.'))).toBe(true);
+    expect(lesson1_3.stuck!(line('--> My doog likess to chasee red balls.'))).toBe(true);
+  });
+});
+
 describe('parseShellCommand', () => {
   const parse = (input: string) => parseShellCommand(input, 'lesson1-2.txt');
 
@@ -119,7 +152,7 @@ describe('parseShellCommand', () => {
 describe('nextLesson', () => {
   it('follows the chapter list and says whether the lesson is built', () => {
     expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: true });
-    expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: false });
+    expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: true });
   });
 
   it('is undefined after the last lesson', () => {

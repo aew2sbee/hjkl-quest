@@ -57,6 +57,11 @@ export interface Lesson {
   /** Fewest keys that clear every TODO. Used for the star rating. */
   optimalKeys: number;
   todos: Todo[];
+  /**
+   * True when the text can no longer reach the goal with the commands taught so far,
+   * e.g. a needed letter was deleted. The learner is told to start over.
+   */
+  stuck?: (s: Snapshot) => boolean;
 }
 
 export const defineLesson = (lesson: Lesson): Lesson => lesson;
