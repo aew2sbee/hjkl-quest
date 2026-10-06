@@ -34,3 +34,10 @@ export const chapters: ChapterOutline[] = [
   { no: 6, title: 'その他の編集', lessons: [] },
   { no: 7, title: 'ヘルプと設定', lessons: [] },
 ];
+
+/** The lesson after `id` in the chapter list, built or not. Undefined after the last one. */
+export function nextLesson(id: string): { id: string; title: string; ready: boolean } | undefined {
+  const all = chapters.flatMap((ch) => ch.lessons);
+  const next = all[all.findIndex((l) => l.id === id) + 1];
+  return next && { ...next, ready: next.id in lessons };
+}

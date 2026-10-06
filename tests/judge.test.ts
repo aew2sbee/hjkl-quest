@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advance, classifyKey, keyName } from '../src/engine/judge';
 import lesson from '../src/lessons/1-1';
+import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
 const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal' });
@@ -70,6 +71,16 @@ describe('classifyKey', () => {
   it('leaves modifiers, Tab and Alt/Meta shortcuts to the browser', () => {
     for (const k of ['Shift', 'Control', 'Tab']) expect(classifyKey(lesson, key(k))).toBe('ignore');
     expect(classifyKey(lesson, key('r', { metaKey: true }))).toBe('ignore');
+  });
+});
+
+describe('nextLesson', () => {
+  it('follows the chapter list and says whether the lesson is built', () => {
+    expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: false });
+  });
+
+  it('is undefined after the last lesson', () => {
+    expect(nextLesson('1-6')).toBeUndefined();
   });
 });
 

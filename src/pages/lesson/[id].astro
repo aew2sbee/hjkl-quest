@@ -1,8 +1,9 @@
 ---
+import ClearDialog from '../../components/ClearDialog.astro';
 import QuestPanel from '../../components/QuestPanel.astro';
 import Sidebar from '../../components/Sidebar.astro';
 import Base from '../../layouts/Base.astro';
-import { lessons } from '../../lessons';
+import { lessons, nextLesson } from '../../lessons';
 import type { Lesson } from '../../lessons/types';
 
 export function getStaticPaths() {
@@ -10,9 +11,11 @@ export function getStaticPaths() {
 }
 
 const { lesson } = Astro.props as { lesson: Lesson };
+const toNo = (id: string) => id.replace('-', '.');
+const next = nextLesson(lesson.id);
 ---
 
-<Base title={`${lesson.id.replace('-', '.')} ${lesson.title}`}>
+<Base title={`${toNo(lesson.id)} ${lesson.title}`}>
   <div class="app" data-lesson={lesson.id}>
     <Sidebar current={lesson.id} />
     <div class="main">
@@ -36,6 +39,15 @@ const { lesson } = Astro.props as { lesson: Lesson };
     <span class="face" id="toast-face"></span>
     <span><span class="msg" id="toast-msg"></span><span class="sub" id="toast-sub"></span></span>
   </div>
+  <ClearDialog
+    no={toNo(lesson.id)}
+    next={next && {
+      no: toNo(next.id),
+      title: next.title,
+      href: `${import.meta.env.BASE_URL}lesson/${next.id}/`,
+      ready: next.ready,
+    }}
+  />
 </Base>
 
 <script>
@@ -89,10 +101,13 @@ const { lesson } = Astro.props as { lesson: Lesson };
     if (done < lesson.todos.length) {
       toast('🎉', pick(finished.praise), `TODO ${done}/${lesson.todos.length} 達成`);
     } else {
-      $('clear-sub').textContent = `キー数 ${keyCount}（最短 ${lesson.optimalKeys}）`;
-      $('clear').hidden = false;
       setCmdline(`"${lesson.fileName}" quest complete!`, 'ok');
-      toast('🏆', 'レッスンクリア！', pick(finished.praise));
+      $('clear-keys').textContent = `${pick(finished.praise)}  キー数 ${keyCount}（最短 ${lesson.optimalKeys}）`;
+      // Let the last check mark land before the dialog covers the page.
+      window.setTimeout(() => {
+        $('toast').classList.remove('show');
+        ($('clear-dialog') as HTMLDialogElement).showModal();
+      }, 600);
     }
   }
 
@@ -139,7 +154,7 @@ const { lesson } = Astro.props as { lesson: Lesson };
     editor.focus();
   });
 
-  $('btn-reset').addEventListener('click', () => {
+  function restart() {
     done = 0;
     keyCount = 0;
     editor.reset();
@@ -147,9 +162,14 @@ const { lesson } = Astro.props as { lesson: Lesson };
     onChange(editor.snapshot());
     $('keylog').replaceChildren($('keylog').firstElementChild!);
     $('hint').hidden = true;
-    $('clear').hidden = true;
     setCmdline('');
     editor.focus();
+  }
+
+  $('btn-reset').addEventListener('click', restart);
+  $('clear-retry').addEventListener('click', () => {
+    ($('clear-dialog') as HTMLDialogElement).close();
+    restart();
   });
 
   renderTodos();

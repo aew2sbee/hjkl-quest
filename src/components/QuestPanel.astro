@@ -32,10 +32,6 @@ const no = lesson.id.replace('-', '.');
     <button class="btn" id="btn-hint" type="button">💡 ヒント</button>
     <button class="btn" id="btn-reset" type="button">↺ やり直す</button>
   </div>
-  <div class="clear" id="clear" hidden>
-    <b>Lesson {no} クリア！</b>
-    <span id="clear-sub"></span>
-  </div>
 </aside>
 
 <style>
@@ -155,8 +151,7 @@ const no = lesson.id.replace('-', '.');
     padding: 10px 12px;
     color: var(--ed-fg);
   }
-  .hint[hidden],
-  .clear[hidden] {
+  .hint[hidden] {
     display: none;
   }
   .qactions {
@@ -179,23 +174,5 @@ const no = lesson.id.replace('-', '.');
   .btn:focus-visible {
     outline: 2px solid var(--vim-glow);
     outline-offset: 2px;
-  }
-  .clear {
-    display: grid;
-    gap: 6px;
-    text-align: center;
-    background: linear-gradient(160deg, color-mix(in srgb, var(--vim) 30%, var(--surface)), var(--surface));
-    border-radius: var(--r);
-    padding: 18px;
-    animation: pop 0.5s ease-out;
-  }
-  .clear b {
-    font-size: 19px;
-  }
-  @keyframes pop {
-    from {
-      transform: translateY(-6px) scale(1.05);
-      opacity: 0.3;
-    }
   }
 </style>
