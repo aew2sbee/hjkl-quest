@@ -5,6 +5,7 @@ import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
 import lesson1_3 from '../src/lessons/1-3';
 import lesson1_4 from '../src/lessons/1-4';
+import lesson1_5 from '../src/lessons/1-5';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
@@ -170,6 +171,33 @@ describe('lesson 1-4', () => {
   });
 });
 
+describe('lesson 1-5', () => {
+  const lines = (first: string, second: string, mode = 'normal'): Snapshot => ({
+    lines: [first, second],
+    cursor: { line: 0, ch: 0 },
+    mode,
+    screen: 'vim',
+    ran: ['vim'],
+  });
+  const [sun, cats] = lesson1_5.buffer;
+  const sunDone = '---> The sun rises in the east.';
+  const catsDone = '---> Most cats sleep for half of the day.';
+
+  it('is done after adding to both line ends and going back to normal mode', () => {
+    let done = advance(lesson1_5, 0, lines(sunDone, cats, 'insert'));
+    expect(done).toBe(0);
+    done = advance(lesson1_5, done, lines(sunDone, cats));
+    expect(done).toBe(1);
+    done = advance(lesson1_5, done, lines(sunDone, catsDone));
+    expect(done).toBe(2);
+  });
+
+  it('catches up when the second line is done first', () => {
+    expect(advance(lesson1_5, 0, lines(sun, catsDone))).toBe(0);
+    expect(advance(lesson1_5, 0, lines(sunDone, catsDone))).toBe(2);
+  });
+});
+
 describe('highlightFor', () => {
   it('highlights a target as one character', () => {
     expect(highlightFor(lesson.todos[0], lesson.buffer)).toEqual({ line: 2, ch: 7, length: 1 });
@@ -207,6 +235,7 @@ describe('nextLesson', () => {
     expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: true });
     expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: true });
     expect(nextLesson('1-3')).toEqual({ id: '1-4', title: 'i で挿入', ready: true });
+    expect(nextLesson('1-4')).toEqual({ id: '1-5', title: 'A で追記', ready: true });
   });
 
   it('is undefined after the last lesson', () => {
