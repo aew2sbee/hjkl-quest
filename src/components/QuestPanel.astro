@@ -177,6 +177,23 @@ const no = lesson.id.replace('-', '.');
     background: var(--surface-2);
     color: var(--fg);
   }
+  /* Set while the text can no longer reach the goal: starting over is the way out. */
+  .btn:global(.attention) {
+    background: color-mix(in srgb, var(--warn) 30%, var(--surface-2));
+    outline: 2px solid var(--warn);
+    /* Two short bobs to catch the eye, then the color alone keeps pointing at it. */
+    animation: nudge 0.5s ease-in-out 2;
+  }
+  @keyframes nudge {
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn:global(.attention) {
+      animation: none;
+    }
+  }
   .btn:focus-visible {
     outline: 2px solid var(--vim-glow);
     outline-offset: 2px;

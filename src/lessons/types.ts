@@ -4,6 +4,11 @@ export interface Pos {
   ch: number;
 }
 
+/** A run of characters on one line, e.g. a word to highlight. */
+export interface Span extends Pos {
+  length: number;
+}
+
 /** The editor part of a snapshot. */
 export interface EditorSnapshot {
   lines: string[];
@@ -31,6 +36,11 @@ export interface Todo {
   done: (s: Snapshot) => boolean;
   /** Highlighted in the editor while this TODO is the current one. */
   target?: Pos;
+  /**
+   * Text highlighted in the editor while this TODO is the current one, found by search
+   * because earlier edits move it. Shows where to look without showing which letter to fix.
+   */
+  mark?: string;
 }
 
 export interface Lesson {

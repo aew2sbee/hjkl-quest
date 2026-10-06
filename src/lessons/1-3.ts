@@ -29,6 +29,7 @@ export default defineLesson({
   todos: [
     {
       id: 'fix-dog',
+      mark: 'doog',
       text: '<code>doog</code> を <code>dog</code> にする',
       hint: '<code>l</code> で <code>o</code> の上まで進んで、<code>x</code> を1回押そう。',
       praise: ['一撃で消した！', 'x の使い方はばっちり！'],
@@ -36,6 +37,7 @@ export default defineLesson({
     },
     {
       id: 'fix-likes',
+      mark: 'likess',
       text: '<code>likess</code> を <code>likes</code> にする',
       hint: '最後の <code>s</code> の上まで <code>l</code> で進んで、<code>x</code> を押そう。',
       praise: ['いい調子！', 'どんどん直ってきた！'],
@@ -43,6 +45,7 @@ export default defineLesson({
     },
     {
       id: 'fix-chase',
+      mark: 'chasee',
       text: '<code>chasee</code> を <code>chase</code> にする',
       hint: '最後の <code>e</code> の上まで <code>l</code> で進んで、<code>x</code> を押そう。',
       praise: ['完璧な文になった！', 'もう x は怖くない！'],

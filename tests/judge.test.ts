@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advance, classifyKey, keyName } from '../src/engine/judge';
+import { advance, classifyKey, highlightFor, keyName } from '../src/engine/judge';
 import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
@@ -130,6 +130,22 @@ describe('lesson 1-3', () => {
     expect(lesson1_3.stuck!(line('---> My dog likes to chase red balls.'))).toBe(false);
     expect(lesson1_3.stuck!(line('---> My og likess to chasee red balls.'))).toBe(true);
     expect(lesson1_3.stuck!(line('--> My doog likess to chasee red balls.'))).toBe(true);
+  });
+});
+
+describe('highlightFor', () => {
+  it('highlights a target as one character', () => {
+    expect(highlightFor(lesson.todos[0], lesson.buffer)).toEqual({ line: 2, ch: 7, length: 1 });
+  });
+
+  it('finds the marked word where it is now, after earlier edits moved it', () => {
+    const lines = ['---> My dog likess to chasee red balls.'];
+    expect(highlightFor(lesson1_3.todos[1], lines)).toEqual({ line: 0, ch: 12, length: 6 });
+  });
+
+  it('shows nothing once the marked word is gone, or after the last TODO', () => {
+    expect(highlightFor(lesson1_3.todos[1], ['---> My dog likss to chasee red balls.'])).toBeNull();
+    expect(highlightFor(undefined, lesson1_3.buffer)).toBeNull();
   });
 });
 
