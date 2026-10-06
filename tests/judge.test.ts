@@ -4,6 +4,7 @@ import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
 import lesson1_3 from '../src/lessons/1-3';
+import lesson1_4 from '../src/lessons/1-4';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
@@ -78,6 +79,15 @@ describe('classifyKey', () => {
     expect(classifyKey(lesson, key('d', { ctrlKey: true }))).toBe('unlearned');
   });
 
+  it('types any character and Backspace in insert mode, but not Enter', () => {
+    for (const k of ['w', 'G', '0', ' ', '.', 'Backspace']) {
+      expect(classifyKey(lesson1_4, key(k), 'insert')).toBe('pass');
+    }
+    expect(classifyKey(lesson1_4, key('Enter'), 'insert')).toBe('unlearned');
+    expect(classifyKey(lesson1_4, key('ArrowLeft'), 'insert')).toBe('arrow');
+    expect(classifyKey(lesson1_4, key('w'))).toBe('unlearned');
+  });
+
   it('leaves modifiers, Tab and Alt/Meta shortcuts to the browser', () => {
     for (const k of ['Shift', 'Control', 'Tab']) expect(classifyKey(lesson, key(k))).toBe('ignore');
     expect(classifyKey(lesson, key('r', { metaKey: true }))).toBe('ignore');
@@ -133,6 +143,33 @@ describe('lesson 1-3', () => {
   });
 });
 
+describe('lesson 1-4', () => {
+  const line = (text: string, mode = 'normal'): Snapshot => ({
+    lines: [text],
+    cursor: { line: 0, ch: 0 },
+    mode,
+    screen: 'vim',
+    ran: ['vim'],
+  });
+
+  it('is done after adding both words and going back to normal mode', () => {
+    let done = advance(lesson1_4, 0, line('---> I drink a cup tea every morning.', 'insert'));
+    expect(done).toBe(0);
+    done = advance(lesson1_4, done, line('---> I drink a cup tea every morning.'));
+    expect(done).toBe(1);
+    done = advance(lesson1_4, done, line('---> I drink a cup of tea every morning.', 'insert'));
+    expect(done).toBe(1);
+    done = advance(lesson1_4, done, line('---> I drink a cup of tea every morning.'));
+    expect(done).toBe(2);
+  });
+
+  it('marks where each word goes', () => {
+    expect(highlightFor(lesson1_4.todos[0], lesson1_4.buffer)).toEqual({ line: 0, ch: 7, length: 5 });
+    const lines = ['---> I drink a cup tea every morning.'];
+    expect(highlightFor(lesson1_4.todos[1], lines)).toEqual({ line: 0, ch: 19, length: 3 });
+  });
+});
+
 describe('highlightFor', () => {
   it('highlights a target as one character', () => {
     expect(highlightFor(lesson.todos[0], lesson.buffer)).toEqual({ line: 2, ch: 7, length: 1 });
@@ -169,6 +206,7 @@ describe('nextLesson', () => {
   it('follows the chapter list and says whether the lesson is built', () => {
     expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: true });
     expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: true });
+    expect(nextLesson('1-3')).toEqual({ id: '1-4', title: 'i で挿入', ready: true });
   });
 
   it('is undefined after the last lesson', () => {

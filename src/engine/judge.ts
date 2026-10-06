@@ -19,10 +19,12 @@ export function keyName(e: KeyInput): string {
   return e.ctrlKey && e.key.length === 1 ? `Ctrl-${e.key.toLowerCase()}` : e.key;
 }
 
-export function classifyKey(lesson: Lesson, e: KeyInput): KeyVerdict {
+export function classifyKey(lesson: Lesson, e: KeyInput, mode = 'normal'): KeyVerdict {
   if (e.key in arrows) return 'arrow';
   if (ignored.has(e.key) || e.metaKey || e.altKey) return 'ignore';
   if (e.key === 'Escape') return 'pass';
+  // In insert mode keys are typed as text, not run as commands. Enter stays out so the line is not split.
+  if (mode === 'insert' && !e.ctrlKey && (e.key.length === 1 || e.key === 'Backspace')) return 'pass';
   return lesson.keys.includes(keyName(e)) ? 'pass' : 'unlearned';
 }
 

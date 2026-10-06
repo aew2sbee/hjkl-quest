@@ -58,7 +58,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     EditorView.domEventHandlers({
       keydown(e) {
         if (e.isComposing) return false;
-        const verdict = classifyKey(lesson, e);
+        const verdict = classifyKey(lesson, e, mode);
         if (verdict === 'ignore') return false;
         handlers.onKey(keyName(e), verdict);
         return verdict !== 'pass';
