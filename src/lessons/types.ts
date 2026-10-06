@@ -55,6 +55,11 @@ export interface Lesson {
   fileName: string;
   /** Start at the shell prompt, so the learner launches Vim with `vim`. */
   shell: boolean;
+  /**
+   * The file is opened by name (`vim <fileName>`; bare `vim` is not enough) and saved with `:wq`.
+   * A saved file opens with what was saved. Other lessons do not save.
+   */
+  saves?: boolean;
   buffer: string[];
   start: Pos;
   readOnly: boolean;

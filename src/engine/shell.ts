@@ -2,15 +2,17 @@
 export type ShellCommand =
   | { kind: 'empty' }
   | { kind: 'vim' }
+  | { kind: 'no-file' }
   | { kind: 'other-file'; file: string }
   | { kind: 'unknown'; name: string };
 
-/** `vim` and `vim <fileName>` open the lesson file. */
-export function parseShellCommand(input: string, fileName: string): ShellCommand {
+/** `vim` and `vim <fileName>` open the lesson file. With `needsName`, only `vim <fileName>` does. */
+export function parseShellCommand(input: string, fileName: string, needsName = false): ShellCommand {
   const words = input.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return { kind: 'empty' };
   if (words[0] !== 'vim') return { kind: 'unknown', name: words[0] };
-  if (words.length === 1 || (words.length === 2 && words[1] === fileName)) return { kind: 'vim' };
+  if (words.length === 1) return needsName ? { kind: 'no-file' } : { kind: 'vim' };
+  if (words.length === 2 && words[1] === fileName) return { kind: 'vim' };
   return { kind: 'other-file', file: words.slice(1).join(' ') };
 }
 
@@ -34,8 +36,11 @@ const MAX_LINES = 8;
 
 type LineKind = 'cmd' | 'err' | 'tip';
 
-/** A pretend shell inside `el`. Typed text is shown with textContent, never as HTML. */
-export function createShell(el: HTMLElement, banner: string, handlers: ShellHandlers): Shell {
+/**
+ * A pretend shell inside `el`. Typed text is shown with textContent, never as HTML.
+ * `open` is the command suggested at the empty prompt, e.g. "vim".
+ */
+export function createShell(el: HTMLElement, banner: string, open: string, handlers: ShellHandlers): Shell {
   let input = '';
   let history: { text: string; kind?: LineKind }[] = [];
 
@@ -66,7 +71,7 @@ export function createShell(el: HTMLElement, banner: string, handlers: ShellHand
   function render() {
     const prompt = promptLine(input);
     prompt.append(span('caret', ' '));
-    if (!input) prompt.append(span('ghost', '  ← vim と入力して Enter'));
+    if (!input) prompt.append(span('ghost', `  ← ${open} と入力して Enter`));
     el.replaceChildren(
       line(banner, 'ghost'),
       ...history.map((h) => (h.kind === 'cmd' ? promptLine(h.text) : line(h.text, h.kind))),

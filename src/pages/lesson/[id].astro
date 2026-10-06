@@ -83,13 +83,17 @@ const next = nextLesson(lesson.id);
   let ran: string[] = [];
   let done = 0;
   let keyCount = 0;
+  // What :wq last wrote. Opening the file again shows this instead of the lesson's text.
+  let saved: string[] | undefined;
   // Tell the learner only once per attempt that the text can no longer reach the goal.
   let stuckNoticed = false;
   // The highlight last sent to the editor, so it is only redrawn when it moves.
   let shownHighlight = '';
 
-  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit });
-  const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', {
+  // The command that opens the lesson file, as suggested at the prompt.
+  const openCommand = lesson.saves ? `vim ${lesson.fileName}` : 'vim';
+  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit, onWriteQuit });
+  const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
     onKey: (name) => onKey(name, 'pass'),
     onCommand,
   });
@@ -103,28 +107,50 @@ const next = nextLesson(lesson.id);
   const focusScreen = () => (screen === 'vim' ? editor.focus() : shell.focus());
 
   function onCommand(input: string) {
-    const cmd = parseShellCommand(input, lesson.fileName);
+    const cmd = parseShellCommand(input, lesson.fileName, lesson.saves);
     if (cmd.kind === 'vim') {
       ran = [...ran, 'vim'];
-      resetEditor();
+      resetEditor(saved);
       setCmdline('');
       show('vim');
       judge();
+    } else if (cmd.kind === 'no-file') {
+      shell.print(`このレッスンではファイル名まで付けて ${openCommand} で開こう`, 'tip');
     } else if (cmd.kind === 'other-file') {
-      shell.print(`このレッスンでは vim か vim ${lesson.fileName} で開こう`, 'tip');
+      const ways = lesson.saves ? openCommand : `vim か vim ${lesson.fileName}`;
+      shell.print(`このレッスンでは ${ways} で開こう`, 'tip');
     } else if (cmd.kind === 'unknown') {
       shell.print(`zsh: command not found: ${cmd.name}`, 'err');
-      shell.print('💡 v・i・m の3文字を入力して Enter を押してね', 'tip');
+      const tip = lesson.saves ? `${openCommand} と入力して` : 'v・i・m の3文字を入力して';
+      shell.print(`💡 ${tip} Enter を押してね`, 'tip');
     }
   }
 
   function onQuit(force: boolean) {
     if (!lesson.shell) return;
     if (!force) {
-      setCmdline('変更を捨てて終了するときは :q! と ! まで付けよう', 'err');
+      const msg = lesson.saves
+        ? '保存して終了するときは :wq、変更を捨てて終了するときは :q! と打とう'
+        : '変更を捨てて終了するときは :q! と ! まで付けよう';
+      setCmdline(msg, 'err');
       return;
     }
     ran = [...ran, ':q!'];
+    show('shell');
+    judge();
+  }
+
+  function onWriteQuit() {
+    if (!lesson.shell) return;
+    if (!lesson.saves) {
+      setCmdline('保存は 1.6 で習うよ。今は :q! で終了しよう', 'err');
+      return;
+    }
+    saved = editor.snapshot().lines;
+    // Vim reports the write like this as it quits.
+    const bytes = saved.reduce((n, l) => n + l.length + 1, 0);
+    shell.print(`"${lesson.fileName}" ${saved.length}L, ${bytes}B written`);
+    ran = [...ran, ':wq'];
     show('shell');
     judge();
   }
@@ -192,8 +218,8 @@ const next = nextLesson(lesson.id);
     editor.setTarget(span);
   }
 
-  function resetEditor() {
-    editor.reset();
+  function resetEditor(lines?: string[]) {
+    editor.reset(lines);
     shownHighlight = '';
     stuckNoticed = false;
   }
@@ -237,6 +263,7 @@ const next = nextLesson(lesson.id);
     done = 0;
     keyCount = 0;
     ran = [];
+    saved = undefined;
     resetEditor();
     shell.reset();
     renderTodos();
