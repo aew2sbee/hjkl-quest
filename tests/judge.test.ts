@@ -83,9 +83,16 @@ describe('classifyKey', () => {
     for (const k of ['w', 'G', '0', ' ', '.', 'Backspace']) {
       expect(classifyKey(lesson1_4, key(k), 'insert')).toBe('pass');
     }
-    expect(classifyKey(lesson1_4, key('Enter'), 'insert')).toBe('unlearned');
+    for (const k of ['Enter', 'Delete']) expect(classifyKey(lesson1_4, key(k), 'insert')).toBe('not-text');
+    expect(classifyKey(lesson1_4, key('w', { ctrlKey: true }), 'insert')).toBe('not-text');
+    expect(classifyKey(lesson1_4, key('Escape'), 'insert')).toBe('pass');
     expect(classifyKey(lesson1_4, key('ArrowLeft'), 'insert')).toBe('arrow');
     expect(classifyKey(lesson1_4, key('w'))).toBe('unlearned');
+  });
+
+  it('asks to turn the IME off in any mode', () => {
+    expect(classifyKey(lesson, key('Process'))).toBe('ime');
+    expect(classifyKey(lesson1_4, key('Process'), 'insert')).toBe('ime');
   });
 
   it('leaves modifiers, Tab and Alt/Meta shortcuts to the browser', () => {

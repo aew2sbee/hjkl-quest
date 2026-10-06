@@ -107,7 +107,9 @@ To leave without saving, type  :q!  and press Enter.
 - 挿入モードでは、文字・Space・Backspace を入力できる。Enter は行が分かれてしまうので止める。
 - 単語を入れたあと `Esc` でノーマルモードに戻った時点で達成にする。
 - 今の TODO で単語を入れる場所（`a cup`、`tea`）を黄色く光らせる。
-- 最短は 30 キー（`vim` Enter の4キー＋`7l` `i` `drink ` `Esc`＋`6l` `i` ` of` `Esc`）。
+- 最短は 30 キー（`vim` Enter の4キー＋`l` を7回・`i`・`drink `・`Esc` の15キー＋`l` を6回・`i`・` of`・`Esc` の11キー）。2つ目は `tea` の前の Space で `i` を押すと `l` が1回少なくて済む。
+- 日本語入力がオンのまま押したキー（`Process`）は Vim に渡さず、オフにするよう伝える。
+- 挿入モードで Enter などの文字でないキーを押したら、理由と「文字・Space・Backspace で入力して Esc で戻る」ことを伝える。
 
 ### 1.5 行末に追加 — `A`
 
