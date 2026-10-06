@@ -32,14 +32,23 @@ export interface Shell {
 const PROMPT = '~/quest $';
 const MAX_LINES = 8;
 
+type LineKind = 'cmd' | 'err' | 'tip';
+
 /** A pretend shell inside `el`. Typed text is shown with textContent, never as HTML. */
 export function createShell(el: HTMLElement, banner: string, handlers: ShellHandlers): Shell {
   let input = '';
-  let history: { text: string; kind?: 'cmd' | 'err' | 'tip' }[] = [];
+  let history: { text: string; kind?: LineKind }[] = [];
 
   el.tabIndex = 0;
   el.setAttribute('role', 'textbox');
   el.setAttribute('aria-label', 'シェル');
+
+  const span = (cls: string, text: string) => {
+    const s = document.createElement('span');
+    s.className = cls;
+    s.textContent = text;
+    return s;
+  };
 
   const line = (text: string, cls?: string) => {
     const div = document.createElement('div');
@@ -48,22 +57,16 @@ export function createShell(el: HTMLElement, banner: string, handlers: ShellHand
     return div;
   };
 
+  const promptLine = (text: string) => {
+    const div = line('');
+    div.append(span('p', PROMPT), ` ${text}`);
+    return div;
+  };
+
   function render() {
-    const prompt = document.createElement('div');
-    prompt.className = 'sh';
-    const p = document.createElement('span');
-    p.className = 'p';
-    p.textContent = PROMPT;
-    const caret = document.createElement('span');
-    caret.className = 'caret';
-    caret.textContent = ' ';
-    prompt.append(p, ` ${input}`, caret);
-    if (!input) {
-      const ghost = document.createElement('span');
-      ghost.className = 'ghost';
-      ghost.textContent = '  ← vim と入力して Enter';
-      prompt.append(ghost);
-    }
+    const prompt = promptLine(input);
+    prompt.append(span('caret', ' '));
+    if (!input) prompt.append(span('ghost', '  ← vim と入力して Enter'));
     el.replaceChildren(
       line(banner, 'ghost'),
       ...history.map((h) => (h.kind === 'cmd' ? promptLine(h.text) : line(h.text, h.kind))),
@@ -71,16 +74,7 @@ export function createShell(el: HTMLElement, banner: string, handlers: ShellHand
     );
   }
 
-  const promptLine = (text: string) => {
-    const div = line('');
-    const p = document.createElement('span');
-    p.className = 'p';
-    p.textContent = PROMPT;
-    div.append(p, ` ${text}`);
-    return div;
-  };
-
-  const push = (text: string, kind?: 'cmd' | 'err' | 'tip') => {
+  const push = (text: string, kind?: LineKind) => {
     history = [...history, { text, kind }].slice(-MAX_LINES);
   };
 

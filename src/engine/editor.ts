@@ -107,8 +107,9 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   const listen = () => {
     mode = 'normal';
     const cm = getCM(view);
-    if (cm) quitHandlers.set(cm, handlers.onQuit);
-    cm?.on('vim-mode-change', (e: { mode: string }) => {
+    if (!cm) return;
+    quitHandlers.set(cm, handlers.onQuit);
+    cm.on('vim-mode-change', (e: { mode: string }) => {
       mode = e.mode;
       handlers.onChange(snapshot());
     });
