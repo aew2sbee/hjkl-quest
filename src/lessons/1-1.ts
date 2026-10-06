@@ -20,6 +20,8 @@ export default defineLesson({
     `黄色く光っている ${star} を目指そう。`,
   ],
   fileName: 'lesson1-1.txt',
+  // Launching Vim is taught in 1.2.
+  shell: false,
   buffer: [
     '....*....',
     '.........',

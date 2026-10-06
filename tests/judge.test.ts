@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { advance, classifyKey, keyName } from '../src/engine/judge';
+import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
+import lesson1_2 from '../src/lessons/1-2';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal' });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [] });
+const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
+  lines: lesson1_2.buffer,
+  cursor: { line: 0, ch: 0 },
+  mode: 'normal',
+  screen,
+  ran,
+});
 const key = (k: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key: k,
   ctrlKey: false,
@@ -74,9 +83,43 @@ describe('classifyKey', () => {
   });
 });
 
+describe('lesson 1-2', () => {
+  it('is done after launching Vim and quitting with :q! back to the shell', () => {
+    let done = advance(lesson1_2, 0, after('vim', ['vim']));
+    expect(done).toBe(1);
+    done = advance(lesson1_2, done, after('shell', ['vim', ':q!']));
+    expect(done).toBe(2);
+  });
+
+  it('does not count quitting before Vim was launched', () => {
+    expect(advance(lesson1_2, 0, after('shell', [':q!']))).toBe(0);
+  });
+
+  it('does not count :q! until the shell is showing again', () => {
+    expect(advance(lesson1_2, 1, after('vim', ['vim', ':q!']))).toBe(1);
+  });
+});
+
+describe('parseShellCommand', () => {
+  const parse = (input: string) => parseShellCommand(input, 'lesson1-2.txt');
+
+  it('opens Vim with "vim" or "vim <lesson file>"', () => {
+    expect(parse('vim')).toEqual({ kind: 'vim' });
+    expect(parse('  vim   lesson1-2.txt ')).toEqual({ kind: 'vim' });
+  });
+
+  it('tells other files and other commands apart', () => {
+    expect(parse('vim notes.txt')).toEqual({ kind: 'other-file', file: 'notes.txt' });
+    expect(parse('vi')).toEqual({ kind: 'unknown', name: 'vi' });
+    expect(parse('ls -a')).toEqual({ kind: 'unknown', name: 'ls' });
+    expect(parse('   ')).toEqual({ kind: 'empty' });
+  });
+});
+
 describe('nextLesson', () => {
   it('follows the chapter list and says whether the lesson is built', () => {
-    expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: false });
+    expect(nextLesson('1-1')).toEqual({ id: '1-2', title: '起動と終了', ready: true });
+    expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: false });
   });
 
   it('is undefined after the last lesson', () => {

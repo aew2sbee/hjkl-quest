@@ -4,12 +4,20 @@ export interface Pos {
   ch: number;
 }
 
-/** What the judge sees after every key. */
-export interface Snapshot {
+/** The editor part of a snapshot. */
+export interface EditorSnapshot {
   lines: string[];
   cursor: Pos;
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
+}
+
+/** What the judge sees after every key. */
+export interface Snapshot extends EditorSnapshot {
+  /** Which screen is showing: the shell prompt or Vim. */
+  screen: 'shell' | 'vim';
+  /** Commands run so far, in order: shell commands ("vim") and Ex commands (":q!"). */
+  ran: string[];
 }
 
 export interface Todo {
@@ -35,6 +43,8 @@ export interface Lesson {
   /** Sentences shown under the heading, one per line. HTML. */
   lead: string[];
   fileName: string;
+  /** Start at the shell prompt, so the learner launches Vim with `vim`. */
+  shell: boolean;
   buffer: string[];
   start: Pos;
   readOnly: boolean;

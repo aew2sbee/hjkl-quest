@@ -11,7 +11,7 @@ const base = import.meta.env.BASE_URL;
 ---
 
 <nav class="side" aria-label="チャプター">
-  <h2>CHAPTERS</h2>
+  <h2>レッスン一覧</h2>
   {
     chapters.map((ch) => {
       const isCurrent = ch.lessons.some((l) => l.id === current);
@@ -61,7 +61,7 @@ const base = import.meta.env.BASE_URL;
 <style>
   .side {
     background: var(--surface);
-    border-radius: var(--r);
+    border-radius: 12px;
     padding: 14px 10px;
     display: grid;
     gap: 4px;
@@ -70,8 +70,7 @@ const base = import.meta.env.BASE_URL;
   }
   h2 {
     margin: 0 8px 6px;
-    font-size: 12px;
-    letter-spacing: 0.12em;
+    font-size: 14px;
     color: var(--muted);
   }
   .chapter {

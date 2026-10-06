@@ -1,18 +1,20 @@
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
-import { getCM, vim } from '@replit/codemirror-vim';
-import type { Lesson, Pos, Snapshot } from '../lessons/types';
+import { getCM, vim, Vim } from '@replit/codemirror-vim';
+import type { EditorSnapshot, Lesson, Pos } from '../lessons/types';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
   /** A key pressed in the editor and what happened to it. Not called for modifiers or Tab. */
   onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>): void;
   /** Called after anything the judge looks at changes: text, cursor or mode. */
-  onChange(s: Snapshot): void;
+  onChange(s: EditorSnapshot): void;
+  /** `:q` was run. `force` is true for `:q!`. */
+  onQuit(force: boolean): void;
 }
 
 export interface LessonEditor {
-  snapshot(): Snapshot;
+  snapshot(): EditorSnapshot;
   /** Highlight the current TODO's target, or clear it with null. */
   setTarget(p: Pos | null): void;
   /** Start the lesson over: original text, start position, normal mode. */
@@ -39,6 +41,12 @@ const targetField = StateField.define<DecorationSet>({
     return deco;
   },
   provide: (f) => EditorView.decorations.from(f),
+});
+
+// Ex commands are global in codemirror-vim, so route :q to the editor that ran it.
+const quitHandlers = new WeakMap<object, (force: boolean) => void>();
+Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
+  quitHandlers.get(cm)?.(params.argString?.trim() === '!');
 });
 
 /** Puts a Vim editor for `lesson` into `parent`. */
@@ -84,17 +92,31 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   const view = new EditorView({ state: makeState(), parent });
 
+  // Keys typed in the Ex command line (after ":") go to an <input>, not to the guard above. Log them too.
+  // Capture phase, because Vim stops Enter on the input before it would bubble up here.
+  view.dom.addEventListener(
+    'keydown',
+    (e) => {
+      const logged = e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key);
+      if (e.target instanceof HTMLInputElement && logged && !e.isComposing) handlers.onKey(keyName(e), 'pass');
+    },
+    true,
+  );
+
   // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
   const listen = () => {
     mode = 'normal';
-    getCM(view)?.on('vim-mode-change', (e: { mode: string }) => {
+    const cm = getCM(view);
+    if (!cm) return;
+    quitHandlers.set(cm, handlers.onQuit);
+    cm.on('vim-mode-change', (e: { mode: string }) => {
       mode = e.mode;
       handlers.onChange(snapshot());
     });
   };
   listen();
 
-  function snapshot(): Snapshot {
+  function snapshot(): EditorSnapshot {
     const cursor = getCM(view)?.getCursor() ?? { line: 0, ch: 0 };
     return {
       lines: view.state.doc.toString().split('\n'),
