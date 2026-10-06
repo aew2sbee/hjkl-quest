@@ -36,7 +36,9 @@ const next = nextLesson(lesson.id);
           </div>
           <div class="cmdline" id="cmdline" aria-live="polite"></div>
         </div>
-        <div class="keylog" id="keylog" aria-hidden="true"><span>押したキー:</span></div>
+        <div class="keylog" id="keylog" aria-hidden="true">
+          <span>押したキー:</span><span class="empty">キーを押すと、ここに出ます</span>
+        </div>
       </section>
     </div>
   </div>
@@ -211,7 +213,7 @@ const next = nextLesson(lesson.id);
     editor.reset();
     shell.reset();
     renderTodos();
-    $('keylog').replaceChildren($('keylog').firstElementChild!);
+    $('keylog').querySelectorAll('kbd').forEach((k) => k.remove());
     $('hint').hidden = true;
     setCmdline('');
     show(startScreen);
@@ -441,6 +443,12 @@ const next = nextLesson(lesson.id);
     padding: 3px 10px;
     box-shadow: 0 3px 0 var(--line);
     animation: pop 0.25s ease-out;
+  }
+  .keylog:has(:global(kbd)) .empty {
+    display: none;
+  }
+  .empty {
+    color: var(--ed-dim);
   }
   .keylog :global(kbd.bad) {
     background: color-mix(in srgb, var(--warn) 30%, var(--surface-2));

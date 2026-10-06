@@ -11,8 +11,7 @@ const no = lesson.id.replace('-', '.');
 
 <aside class="quest" aria-label="クエスト">
   <div class="qtext">
-    <h2>QUEST · {no}</h2>
-    <h1>{lesson.heading}</h1>
+    <h1><span class="no">{no}</span>{lesson.heading}</h1>
     <div class="lead">
       {lesson.lead.map((sentence) => <p set:html={sentence} />)}
     </div>
@@ -37,7 +36,7 @@ const no = lesson.id.replace('-', '.');
 <style>
   .quest {
     background: var(--surface);
-    border-radius: var(--r);
+    border-radius: 12px;
     padding: 16px 18px;
     display: grid;
     gap: 12px;
@@ -46,18 +45,25 @@ const no = lesson.id.replace('-', '.');
     display: grid;
     gap: 6px;
   }
-  h2 {
-    margin: 0;
-    font-size: 13px;
-    letter-spacing: 0.12em;
-    color: var(--muted);
-  }
   h1 {
     margin: 0;
-    font-size: 21px;
+    font-size: 20px;
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.4;
     text-wrap: balance;
+  }
+  /* The lesson number, set like a key cap so it reads as part of the same world as hjkl. */
+  h1 .no {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 0 8px;
+    border-radius: 7px;
+    background: var(--vim-deep);
+    box-shadow: 0 3px 0 #06551f;
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    vertical-align: 2px;
   }
   .lead {
     display: grid;
