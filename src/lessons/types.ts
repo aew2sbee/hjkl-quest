@@ -32,8 +32,8 @@ export interface Lesson {
   title: string;
   /** Quest heading. */
   heading: string;
-  /** HTML shown under the heading. */
-  lead: string;
+  /** Sentences shown under the heading, one per line. HTML. */
+  lead: string[];
   fileName: string;
   buffer: string[];
   start: Pos;

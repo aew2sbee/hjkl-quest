@@ -13,7 +13,9 @@ const no = lesson.id.replace('-', '.');
   <div class="qtext">
     <h2>QUEST · {no}</h2>
     <h1>{lesson.heading}</h1>
-    <p class="lead" set:html={lesson.lead} />
+    <div class="lead">
+      {lesson.lead.map((sentence) => <p set:html={sentence} />)}
+    </div>
   </div>
   <ul class="todos" aria-label="TODO">
     {
@@ -62,10 +64,14 @@ const no = lesson.id.replace('-', '.');
     text-wrap: balance;
   }
   .lead {
-    margin: 0;
+    display: grid;
+    gap: 2px;
     color: var(--muted);
     line-height: 1.7;
     font-size: 14px;
+  }
+  .lead p {
+    margin: 0;
   }
   .todos {
     list-style: none;
@@ -134,6 +140,12 @@ const no = lesson.id.replace('-', '.');
     padding: 1px 6px;
     border-radius: 6px;
     font-size: 0.92em;
+  }
+  /* Matches .cm-target in the editor, so "*" in the text reads as the glowing target. */
+  .quest :global(code.star) {
+    color: var(--star);
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--star);
   }
   .hint {
     font-size: 13px;
