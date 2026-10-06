@@ -21,8 +21,13 @@ const next = nextLesson(lesson.id);
     <div class="main">
       <QuestPanel lesson={lesson} />
       <section aria-label="エディタ">
-        <div class="vimwin">
-          <div class="titlebar" aria-hidden="true"><i></i><i></i><i></i><span>{lesson.fileName} — VIM</span></div>
+        <div class="vimwin" data-screen={lesson.shell ? 'shell' : 'vim'}>
+          <div class="titlebar" aria-hidden="true">
+            <i></i><i></i><i></i><span class="title-vim">{lesson.fileName} — VIM</span><span class="title-shell"
+              >~/quest — zsh</span
+            >
+          </div>
+          <div id="shell"></div>
           <div id="editor"></div>
           <div class="status">
             <span class="mode" id="mode">NORMAL</span>
@@ -53,11 +58,13 @@ const next = nextLesson(lesson.id);
 <script>
   import { createLessonEditor } from '../../engine/editor';
   import { advance, hjklFor, type KeyVerdict } from '../../engine/judge';
+  import { createShell, parseShellCommand } from '../../engine/shell';
   import { lessons } from '../../lessons';
   import type { Snapshot } from '../../lessons/types';
 
   const $ = (id: string) => document.getElementById(id)!;
   const lesson = lessons[document.querySelector<HTMLElement>('[data-lesson]')!.dataset.lesson!];
+  const win = document.querySelector<HTMLElement>('.vimwin')!;
   const todoEls = [...document.querySelectorAll<HTMLElement>('[data-todo]')];
   const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
   const keyLabels: Record<string, string> = {
@@ -69,10 +76,52 @@ const next = nextLesson(lesson.id);
     ArrowRight: '→',
   };
 
+  const startScreen: Snapshot['screen'] = lesson.shell ? 'shell' : 'vim';
+  let screen = startScreen;
+  let ran: string[] = [];
   let done = 0;
   let keyCount = 0;
 
-  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange });
+  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit });
+  const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', {
+    onKey: (name) => onKey(name, 'pass'),
+    onCommand,
+  });
+
+  function show(next: Snapshot['screen']) {
+    screen = next;
+    win.dataset.screen = next;
+    focusScreen();
+  }
+
+  const focusScreen = () => (screen === 'vim' ? editor.focus() : shell.focus());
+
+  function onCommand(input: string) {
+    const cmd = parseShellCommand(input, lesson.fileName);
+    if (cmd.kind === 'vim') {
+      ran = [...ran, 'vim'];
+      editor.reset();
+      setCmdline('');
+      show('vim');
+      judge();
+    } else if (cmd.kind === 'other-file') {
+      shell.print(`このレッスンでは vim か vim ${lesson.fileName} で開こう`, 'tip');
+    } else if (cmd.kind === 'unknown') {
+      shell.print(`zsh: command not found: ${cmd.name}`, 'err');
+      shell.print('💡 v・i・m の3文字を入力して Enter を押してね', 'tip');
+    }
+  }
+
+  function onQuit(force: boolean) {
+    if (!lesson.shell) return;
+    if (!force) {
+      setCmdline('変更を捨てて終了するときは :q! と ! まで付けよう', 'err');
+      return;
+    }
+    ran = [...ran, ':q!'];
+    show('shell');
+    judge();
+  }
 
   function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {
     const label = keyLabels[name] ?? name;
@@ -87,7 +136,8 @@ const next = nextLesson(lesson.id);
     }
   }
 
-  function onChange(s: Snapshot) {
+  function judge() {
+    const s: Snapshot = { ...editor.snapshot(), screen, ran };
     $('pos').textContent = `${s.cursor.line + 1},${s.cursor.ch + 1}`;
     const mode = $('mode');
     mode.textContent = s.mode.toUpperCase();
@@ -151,19 +201,21 @@ const next = nextLesson(lesson.id);
     const hint = $('hint');
     hint.innerHTML = `💡 ${lesson.todos[Math.min(done, lesson.todos.length - 1)].hint}`;
     hint.hidden = false;
-    editor.focus();
+    focusScreen();
   });
 
   function restart() {
     done = 0;
     keyCount = 0;
+    ran = [];
     editor.reset();
+    shell.reset();
     renderTodos();
-    onChange(editor.snapshot());
     $('keylog').replaceChildren($('keylog').firstElementChild!);
     $('hint').hidden = true;
     setCmdline('');
-    editor.focus();
+    show(startScreen);
+    judge();
   }
 
   $('btn-reset').addEventListener('click', restart);
@@ -173,7 +225,7 @@ const next = nextLesson(lesson.id);
   });
 
   renderTodos();
-  editor.focus();
+  focusScreen();
 </script>
 
 <style>
@@ -227,6 +279,55 @@ const next = nextLesson(lesson.id);
     margin-left: 8px;
   }
 
+  /* One screen at a time: the shell prompt, or Vim with its status line. */
+  .vimwin[data-screen='shell'] :is(#editor, .status, .cmdline, .title-vim),
+  .vimwin[data-screen='vim'] :is(#shell, .title-shell) {
+    display: none;
+  }
+  #shell {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 8px 0 12px;
+    min-height: 9em;
+    color: var(--ed-fg);
+    outline: none;
+    cursor: text;
+  }
+  #shell :global(.sh) {
+    padding: 0 14px;
+    white-space: pre-wrap;
+  }
+  #shell :global(.p) {
+    color: var(--vim-glow);
+    font-weight: 700;
+  }
+  #shell :global(.ghost) {
+    color: var(--ed-dim);
+  }
+  #shell :global(.err) {
+    color: #ff6b6b;
+  }
+  #shell :global(.tip) {
+    color: var(--star);
+  }
+  #shell :global(.caret) {
+    display: inline-block;
+    width: 0.6em;
+    background: var(--ed-fg);
+    animation: blink 1s steps(1) infinite;
+  }
+  #shell:not(:focus) :global(.caret) {
+    background: transparent;
+    outline: 1px solid var(--ed-fg);
+    animation: none;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
   /* CodeMirror builds its DOM at runtime, so these rules are global. */
   #editor :global(.cm-editor) {
     background: var(--ed-bg);
@@ -256,6 +357,21 @@ const next = nextLesson(lesson.id);
   #editor :global(.cm-editor:not(.cm-focused) .cm-fat-cursor) {
     background: none;
     outline: 1px solid var(--ed-fg);
+  }
+  /* The ":" command line Vim opens at the bottom of the editor. */
+  #editor :global(.cm-panels) {
+    background: var(--ed-bg);
+    color: var(--ed-fg);
+    border-top: 1px solid var(--line);
+  }
+  #editor :global(.cm-vim-panel) {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    padding: 4px 14px;
+  }
+  #editor :global(.cm-vim-panel input) {
+    color: var(--ed-fg);
+    font: inherit;
   }
   #editor :global(.cm-target) {
     color: var(--star);
