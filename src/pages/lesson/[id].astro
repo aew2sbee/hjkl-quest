@@ -59,7 +59,7 @@ const next = nextLesson(lesson.id);
 
 <script>
   import { createLessonEditor } from '../../engine/editor';
-  import { advance, hjklFor, type KeyVerdict } from '../../engine/judge';
+  import { advance, highlightFor, hjklFor, type KeyVerdict } from '../../engine/judge';
   import { createShell, parseShellCommand } from '../../engine/shell';
   import { lessons } from '../../lessons';
   import type { Snapshot } from '../../lessons/types';
@@ -83,6 +83,10 @@ const next = nextLesson(lesson.id);
   let ran: string[] = [];
   let done = 0;
   let keyCount = 0;
+  // Tell the learner only once per attempt that the text can no longer reach the goal.
+  let stuckNoticed = false;
+  // The highlight last sent to the editor, so it is only redrawn when it moves.
+  let shownHighlight = '';
 
   const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', {
@@ -102,7 +106,7 @@ const next = nextLesson(lesson.id);
     const cmd = parseShellCommand(input, lesson.fileName);
     if (cmd.kind === 'vim') {
       ran = [...ran, 'vim'];
-      editor.reset();
+      resetEditor();
       setCmdline('');
       show('vim');
       judge();
@@ -140,15 +144,24 @@ const next = nextLesson(lesson.id);
 
   function judge() {
     const s: Snapshot = { ...editor.snapshot(), screen, ran };
+    const stuck = lesson.stuck?.(s) ?? false;
+    // Until the learner starts over, keep pointing at the button that fixes it.
+    $('btn-reset').classList.toggle('attention', stuck);
+    if (stuck && !stuckNoticed) {
+      stuckNoticed = true;
+      toast('🤔', '必要な文字まで消えちゃった', '↺ やり直すで最初の文に戻せるよ', true);
+    }
     $('pos').textContent = `${s.cursor.line + 1},${s.cursor.ch + 1}`;
     const mode = $('mode');
     mode.textContent = s.mode.toUpperCase();
     mode.dataset.mode = s.mode;
 
     const next = advance(lesson, done, s);
-    if (next === done) return;
-    const finished = lesson.todos[next - 1];
+    const advanced = next > done;
     done = next;
+    showHighlight(s.lines);
+    if (!advanced) return;
+    const finished = lesson.todos[done - 1];
     renderTodos();
     if (done < lesson.todos.length) {
       toast('🎉', pick(finished.praise), `TODO ${done}/${lesson.todos.length} 達成`);
@@ -168,7 +181,21 @@ const next = nextLesson(lesson.id);
       el.classList.toggle('done', i < done);
       el.classList.toggle('now', i === done);
     });
-    editor.setTarget(lesson.todos[done]?.target ?? null);
+  }
+
+  // Edits move the marked word, so this runs after every change, not only when a TODO is done.
+  function showHighlight(lines: string[]) {
+    const span = highlightFor(lesson.todos[done], lines);
+    const key = JSON.stringify(span);
+    if (key === shownHighlight) return;
+    shownHighlight = key;
+    editor.setTarget(span);
+  }
+
+  function resetEditor() {
+    editor.reset();
+    shownHighlight = '';
+    stuckNoticed = false;
   }
 
   function setCmdline(text: string, kind?: 'err' | 'ok') {
@@ -210,7 +237,7 @@ const next = nextLesson(lesson.id);
     done = 0;
     keyCount = 0;
     ran = [];
-    editor.reset();
+    resetEditor();
     shell.reset();
     renderTodos();
     $('keylog').querySelectorAll('kbd').forEach((k) => k.remove());
@@ -227,6 +254,7 @@ const next = nextLesson(lesson.id);
   });
 
   renderTodos();
+  judge();
   focusScreen();
 </script>
 

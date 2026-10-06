@@ -1,4 +1,4 @@
-import type { Lesson, Snapshot } from '../lessons/types';
+import type { Lesson, Snapshot, Span, Todo } from '../lessons/types';
 
 type KeyInput = Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>;
 
@@ -28,6 +28,20 @@ export function classifyKey(lesson: Lesson, e: KeyInput): KeyVerdict {
 
 /** The hjkl key for an arrow key, e.g. "j" for ArrowDown. */
 export const hjklFor = (arrowKey: string): string | undefined => arrows[arrowKey];
+
+/**
+ * What to highlight in the editor for `todo`: its target position, or the first place its
+ * mark text appears. Null when there is nothing to show, e.g. the marked word was edited away.
+ */
+export function highlightFor(todo: Todo | undefined, lines: string[]): Span | null {
+  if (todo?.target) return { ...todo.target, length: 1 };
+  if (!todo?.mark) return null;
+  for (let line = 0; line < lines.length; line++) {
+    const ch = lines[line].indexOf(todo.mark);
+    if (ch >= 0) return { line, ch, length: todo.mark.length };
+  }
+  return null;
+}
 
 /**
  * Returns how many TODOs are done after this snapshot. TODOs are done in order:

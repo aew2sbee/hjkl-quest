@@ -1,7 +1,7 @@
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
-import type { EditorSnapshot, Lesson, Pos } from '../lessons/types';
+import type { EditorSnapshot, Lesson, Span } from '../lessons/types';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
@@ -16,13 +16,13 @@ export interface EditorHandlers {
 export interface LessonEditor {
   snapshot(): EditorSnapshot;
   /** Highlight the current TODO's target, or clear it with null. */
-  setTarget(p: Pos | null): void;
+  setTarget(span: Span | null): void;
   /** Start the lesson over: original text, start position, normal mode. */
   reset(): void;
   focus(): void;
 }
 
-const setTargetEffect = StateEffect.define<Pos | null>();
+const setTargetEffect = StateEffect.define<Span | null>();
 const targetMark = Decoration.mark({ class: 'cm-target' });
 
 const targetField = StateField.define<DecorationSet>({
@@ -35,7 +35,7 @@ const targetField = StateField.define<DecorationSet>({
         deco = Decoration.none;
       } else {
         const from = tr.state.doc.line(e.value.line + 1).from + e.value.ch;
-        deco = Decoration.set([targetMark.range(from, from + 1)]);
+        deco = Decoration.set([targetMark.range(from, from + e.value.length)]);
       }
     }
     return deco;
@@ -127,7 +127,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   return {
     snapshot,
-    setTarget: (p) => view.dispatch({ effects: setTargetEffect.of(p) }),
+    setTarget: (span) => view.dispatch({ effects: setTargetEffect.of(span) }),
     reset() {
       view.setState(makeState());
       listen();
