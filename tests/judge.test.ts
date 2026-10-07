@@ -196,6 +196,16 @@ describe('lesson 1-5', () => {
     expect(advance(lesson1_5, 0, lines(sun, catsDone))).toBe(0);
     expect(advance(lesson1_5, 0, lines(sunDone, catsDone))).toBe(2);
   });
+
+  it('marks the end of each line', () => {
+    expect(highlightFor(lesson1_5.todos[0], lesson1_5.buffer)).toEqual({ line: 0, ch: 19, length: 6 });
+    expect(highlightFor(lesson1_5.todos[1], [sunDone, cats])).toEqual({ line: 1, ch: 25, length: 7 });
+  });
+
+  it('passes A but not a in normal mode', () => {
+    expect(classifyKey(lesson1_5, key('A'))).toBe('pass');
+    expect(classifyKey(lesson1_5, key('a'))).toBe('unlearned');
+  });
 });
 
 describe('highlightFor', () => {
