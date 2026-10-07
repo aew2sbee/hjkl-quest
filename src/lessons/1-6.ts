@@ -17,8 +17,8 @@ export default defineLesson({
   start: { line: 0, ch: 0 },
   readOnly: false,
   keys: ['h', 'j', 'k', 'l', 'x', 'i', 'A', ':'],
-  // "vim notes.txt" + Enter, 19l x, ":wq" + Enter
-  optimalKeys: 38,
+  // "vim notes.txt" + Enter, A Esc (cursor on the "."), 6h to the second y, x, ":wq" + Enter
+  optimalKeys: 27,
   todos: [
     {
       id: 'open',

@@ -143,12 +143,13 @@ const next = nextLesson(lesson.id);
   function onWriteQuit() {
     if (!lesson.shell) return;
     if (!lesson.saves) {
-      setCmdline('保存は 1.6 で習うよ。今は :q! で終了しよう', 'err');
+      const savesId = Object.values(lessons).find((l) => l.saves)?.id.replace('-', '.');
+      setCmdline(`保存は${savesId ? ` ${savesId} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
       return;
     }
     saved = editor.snapshot().lines;
     // Vim reports the write like this as it quits.
-    const bytes = saved.reduce((n, l) => n + l.length + 1, 0);
+    const bytes = new TextEncoder().encode(saved.join('\n') + '\n').length;
     shell.print(`"${lesson.fileName}" ${saved.length}L, ${bytes}B written`);
     ran = [...ran, ':wq'];
     show('shell');

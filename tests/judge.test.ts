@@ -237,9 +237,12 @@ describe('lesson 1-6', () => {
     expect(advance(lesson1_6, 1, state('shell', ['vim', ':wq']))).toBe(1);
   });
 
-  it('matches optimalKeys: "vim notes.txt" Enter, l to a y of "yy", x, ":wq" Enter', () => {
+  it('matches optimalKeys: "vim notes.txt" Enter, A Esc to the last char, h back to the second y, x, ":wq" Enter', () => {
     const open = 'vim notes.txt'.length + 1;
-    const fix = lesson1_6.buffer[0].indexOf('yy') + 1;
+    const line = lesson1_6.buffer[0];
+    // A then Esc leaves the cursor on the last character; from there h is shorter than l from the start.
+    const fix = 2 + (line.length - 1 - (line.indexOf('yy') + 1)) + 1;
+    expect(fix).toBeLessThan(line.indexOf('yy') + 1);
     expect(open + fix + ':wq'.length + 1).toBe(lesson1_6.optimalKeys);
   });
 });
