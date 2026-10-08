@@ -11,14 +11,16 @@ export interface EditorHandlers {
   onChange(s: EditorSnapshot): void;
   /** `:q` was run. `force` is true for `:q!`. */
   onQuit(force: boolean): void;
+  /** `:wq` was run. */
+  onWriteQuit(): void;
 }
 
 export interface LessonEditor {
   snapshot(): EditorSnapshot;
   /** Highlight the current TODO's target, or clear it with null. */
   setTarget(span: Span | null): void;
-  /** Start the lesson over: original text, start position, normal mode. */
-  reset(): void;
+  /** Start over at the start position in normal mode, with `lines` or else the lesson's text. */
+  reset(lines?: string[]): void;
   focus(): void;
 }
 
@@ -43,10 +45,13 @@ const targetField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Ex commands are global in codemirror-vim, so route :q to the editor that ran it.
-const quitHandlers = new WeakMap<object, (force: boolean) => void>();
+// Ex commands are global in codemirror-vim, so route :q and :wq to the editor that ran them.
+const exHandlers = new WeakMap<object, EditorHandlers>();
 Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
-  quitHandlers.get(cm)?.(params.argString?.trim() === '!');
+  exHandlers.get(cm)?.onQuit(params.argString?.trim() === '!');
+});
+Vim.defineEx('wq', 'wq', (cm: object) => {
+  exHandlers.get(cm)?.onWriteQuit();
 });
 
 /** Puts a Vim editor for `lesson` into `parent`. */
@@ -71,8 +76,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     }),
   );
 
-  const makeState = () => {
-    const doc = Text.of(lesson.buffer);
+  const makeState = (lines = lesson.buffer) => {
+    const doc = Text.of(lines);
     return EditorState.create({
       doc,
       selection: EditorSelection.cursor(doc.line(lesson.start.line + 1).from + lesson.start.ch),
@@ -108,7 +113,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     mode = 'normal';
     const cm = getCM(view);
     if (!cm) return;
-    quitHandlers.set(cm, handlers.onQuit);
+    exHandlers.set(cm, handlers);
     cm.on('vim-mode-change', (e: { mode: string }) => {
       mode = e.mode;
       handlers.onChange(snapshot());
@@ -128,8 +133,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   return {
     snapshot,
     setTarget: (span) => view.dispatch({ effects: setTargetEffect.of(span) }),
-    reset() {
-      view.setState(makeState());
+    reset(lines) {
+      view.setState(makeState(lines));
       listen();
     },
     focus: () => view.focus(),

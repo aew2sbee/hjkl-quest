@@ -3,11 +3,12 @@ import lesson1_2 from './1-2';
 import lesson1_3 from './1-3';
 import lesson1_4 from './1-4';
 import lesson1_5 from './1-5';
+import lesson1_6 from './1-6';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {

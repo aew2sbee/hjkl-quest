@@ -6,6 +6,7 @@ import lesson1_2 from '../src/lessons/1-2';
 import lesson1_3 from '../src/lessons/1-3';
 import lesson1_4 from '../src/lessons/1-4';
 import lesson1_5 from '../src/lessons/1-5';
+import lesson1_6 from '../src/lessons/1-6';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
@@ -215,6 +216,44 @@ describe('lesson 1-5', () => {
   });
 });
 
+describe('lesson 1-6', () => {
+  const state = (screen: Snapshot['screen'], ran: string[], text = lesson1_6.buffer[0]): Snapshot => ({
+    lines: [text],
+    cursor: { line: 0, ch: 0 },
+    mode: 'normal',
+    screen,
+    ran,
+  });
+  const fixed = '---> Remember to buy milk.';
+
+  it('is done after opening the file, fixing it and saving with :wq', () => {
+    let done = advance(lesson1_6, 0, state('vim', ['vim']));
+    expect(done).toBe(1);
+    done = advance(lesson1_6, done, state('vim', ['vim'], fixed));
+    expect(done).toBe(2);
+    done = advance(lesson1_6, done, state('shell', ['vim', ':wq'], fixed));
+    expect(done).toBe(3);
+  });
+
+  it('does not count leaving with :q!, even after an earlier :wq', () => {
+    expect(advance(lesson1_6, 2, state('shell', ['vim', ':q!'], fixed))).toBe(2);
+    expect(advance(lesson1_6, 2, state('shell', ['vim', ':wq', 'vim', ':q!'], fixed))).toBe(2);
+  });
+
+  it('does not count saving before the fix', () => {
+    expect(advance(lesson1_6, 1, state('shell', ['vim', ':wq']))).toBe(1);
+  });
+
+  it('matches optimalKeys: "vim notes.txt" Enter, A Esc to the last char, h back to the second y, x, ":wq" Enter', () => {
+    const open = 'vim notes.txt'.length + 1;
+    const line = lesson1_6.buffer[0];
+    // A then Esc leaves the cursor on the last character; from there h is shorter than l from the start.
+    const fix = 2 + (line.length - 1 - (line.indexOf('yy') + 1)) + 1;
+    expect(fix).toBeLessThan(line.indexOf('yy') + 1);
+    expect(open + fix + ':wq'.length + 1).toBe(lesson1_6.optimalKeys);
+  });
+});
+
 describe('highlightFor', () => {
   it('highlights a target as one character', () => {
     expect(highlightFor(lesson.todos[0], lesson.buffer)).toEqual({ line: 2, ch: 7, length: 1 });
@@ -239,6 +278,12 @@ describe('parseShellCommand', () => {
     expect(parse('  vim   lesson1-2.txt ')).toEqual({ kind: 'vim' });
   });
 
+  it('needs the file name when the lesson saves the file', () => {
+    expect(parseShellCommand('vim', 'notes.txt', true)).toEqual({ kind: 'no-file' });
+    expect(parseShellCommand('vim notes.txt', 'notes.txt', true)).toEqual({ kind: 'vim' });
+    expect(parseShellCommand('vim memo.txt', 'notes.txt', true)).toEqual({ kind: 'other-file', file: 'memo.txt' });
+  });
+
   it('tells other files and other commands apart', () => {
     expect(parse('vim notes.txt')).toEqual({ kind: 'other-file', file: 'notes.txt' });
     expect(parse('vi')).toEqual({ kind: 'unknown', name: 'vi' });
@@ -253,6 +298,7 @@ describe('nextLesson', () => {
     expect(nextLesson('1-2')).toEqual({ id: '1-3', title: 'x で削除', ready: true });
     expect(nextLesson('1-3')).toEqual({ id: '1-4', title: 'i で挿入', ready: true });
     expect(nextLesson('1-4')).toEqual({ id: '1-5', title: 'A で追記', ready: true });
+    expect(nextLesson('1-5')).toEqual({ id: '1-6', title: '保存して終了', ready: true });
   });
 
   it('is undefined after the last lesson', () => {
