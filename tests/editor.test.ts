@@ -6,6 +6,7 @@ import lesson2_1 from '../src/lessons/2-1';
 import lesson2_2 from '../src/lessons/2-2';
 import lesson2_3 from '../src/lessons/2-3';
 import lesson2_4 from '../src/lessons/2-4';
+import lesson2_5 from '../src/lessons/2-5';
 import type { Lesson } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -165,5 +166,23 @@ describe('lesson 2-4 in Vim', () => {
     const { editor, press } = open(lesson2_4);
     press('x', 'd', 'w');
     expect(editor.snapshot().lines).toEqual(lesson2_4.buffer);
+  });
+});
+
+describe('lesson 2-5 in Vim', () => {
+  it('clears in optimalKeys with 2w d2w, 2w d3w', () => {
+    const seq = keys('2w d2w 2w d3w');
+    expect(play(lesson2_5, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson2_5.optimalKeys);
+  });
+
+  it('also takes the count before the operator', () => {
+    expect(play(lesson2_5, keys('2w 2dw 2w 3dw'))).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('asks for d2w when the words are deleted one by one', () => {
+    const p = play(lesson2_5, keys('2w dw dw'));
+    expect(p.done).toBe(0);
+    expect(p.wrong?.id).toBe('cut-one-two');
   });
 });
