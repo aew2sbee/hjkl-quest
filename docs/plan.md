@@ -27,7 +27,7 @@ vimtutor の内容を「TODO を1つずつ達成して褒められる」形式�
 | 状態保存 | localStorage | サーバー不要 |
 | 演出 | 自前の canvas 紙吹雪（または canvas-confetti） | 軽量 |
 | デプロイ | GitHub Actions → `gh-pages` ブランチ → GitHub Pages | 本番は main へのマージで公開、PR ごとにプレビューを公開 |
-| テスト | Vitest（判定ロジック）＋ Playwright（主要な操作の E2E） | 判定のバグは体験を壊すため |
+| テスト | Vitest（判定ロジック。jsdom の上で本物のエディタにキーを送り、最短キー数でクリアできるかも確かめる）＋ Playwright（主要な操作の E2E） | 判定のバグは体験を壊すため |
 
 ## 3. 開発の流れと検証環境
 

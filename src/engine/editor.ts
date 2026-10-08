@@ -1,7 +1,7 @@
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
-import type { EditorSnapshot, Lesson, Span } from '../lessons/types';
+import type { EditorSnapshot, Lesson, Pos, Span } from '../lessons/types';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
@@ -19,8 +19,8 @@ export interface LessonEditor {
   snapshot(): EditorSnapshot;
   /** Highlight the current TODO's target, or clear it with null. */
   setTarget(span: Span | null): void;
-  /** Start over at the start position in normal mode, with `lines` or else the lesson's text. */
-  reset(lines?: string[]): void;
+  /** Start over in normal mode with `lines` (else the lesson's text) and `cursor` (else the start). */
+  reset(lines?: string[], cursor?: Pos): void;
   focus(): void;
 }
 
@@ -57,6 +57,9 @@ Vim.defineEx('wq', 'wq', (cm: object) => {
 /** Puts a Vim editor for `lesson` into `parent`. */
 export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers: EditorHandlers): LessonEditor {
   let mode = 'normal';
+  // Normal-mode commands run so far, and the keys of the one being typed (e.g. "d" before "w").
+  let commands: string[] = [];
+  let typing: string[] = [];
 
   // Runs before the Vim plugin. Returning true stops the key there (and prevents the browser default).
   const guard = Prec.highest(
@@ -65,8 +68,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         if (e.isComposing) return false;
         const verdict = classifyKey(lesson, e, mode);
         if (verdict === 'ignore') return false;
-        handlers.onKey(keyName(e), verdict);
-        return verdict !== 'pass';
+        const name = keyName(e);
+        handlers.onKey(name, verdict);
+        if (verdict !== 'pass') return true;
+        // Esc cancels a half-typed command, and ":" opens the Ex command line, which is tracked on its own.
+        if (mode !== 'normal' || e.key === 'Escape' || e.key === ':') typing = [];
+        else typing.push(name);
+        return false;
       },
       // Clicking must not move the cursor, or targets could be reached without hjkl.
       mousedown(_e, view) {
@@ -76,11 +84,11 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     }),
   );
 
-  const makeState = (lines = lesson.buffer) => {
+  const makeState = (lines = lesson.buffer, cursor = lesson.start) => {
     const doc = Text.of(lines);
     return EditorState.create({
       doc,
-      selection: EditorSelection.cursor(doc.line(lesson.start.line + 1).from + lesson.start.ch),
+      selection: EditorSelection.cursor(doc.line(cursor.line + 1).from + cursor.ch),
       extensions: [
         guard,
         vim(),
@@ -111,9 +119,16 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
   const listen = () => {
     mode = 'normal';
+    commands = [];
+    typing = [];
     const cm = getCM(view);
     if (!cm) return;
     exHandlers.set(cm, handlers);
+    // Fired once a command is complete, before it runs, so the change it makes is judged with it.
+    cm.on('vim-command-done', () => {
+      if (typing.length) commands.push(typing.join(''));
+      typing = [];
+    });
     cm.on('vim-mode-change', (e: { mode: string }) => {
       mode = e.mode;
       handlers.onChange(snapshot());
@@ -127,14 +142,15 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       lines: view.state.doc.toString().split('\n'),
       cursor: { line: cursor.line, ch: cursor.ch },
       mode,
+      commands: [...commands],
     };
   }
 
   return {
     snapshot,
     setTarget: (span) => view.dispatch({ effects: setTargetEffect.of(span) }),
-    reset(lines) {
-      view.setState(makeState(lines));
+    reset(lines, cursor) {
+      view.setState(makeState(lines, cursor));
       listen();
     },
     focus: () => view.focus(),

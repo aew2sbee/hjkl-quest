@@ -27,6 +27,11 @@ const no = lesson.id.replace('-', '.');
     }
   </ul>
   <div class="hint" id="hint" hidden></div>
+  <div class="retry" id="retry" role="status" hidden>
+    <span class="face" aria-hidden="true">🤔</span>
+    <p><b id="retry-what"></b><span id="retry-how"></span></p>
+    <button class="btn" id="btn-retry" type="button">もう一度</button>
+  </div>
   <div class="qactions">
     <button class="btn" id="btn-hint" type="button">💡 ヒント</button>
     <button class="btn" id="btn-reset" type="button">↺ やり直す</button>
@@ -160,6 +165,68 @@ const no = lesson.id.replace('-', '.');
   .hint[hidden] {
     display: none;
   }
+  /* Not a failure: the result is right, only the way differs, so it is warm like the nudge toast, not red. */
+  .retry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px 10px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--warn) 14%, var(--surface-2));
+    outline: 2px solid var(--warn);
+    animation: retry-in 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+  }
+  .retry[hidden] {
+    display: none;
+  }
+  .retry .face {
+    font-size: 26px;
+  }
+  .retry p {
+    margin: 0;
+    display: grid;
+    gap: 2px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .retry b {
+    font-weight: 800;
+  }
+  /* The command to use, as key caps like the key log, so it reads as "press these". */
+  .retry :global(kbd) {
+    display: inline-block;
+    margin: 0 2px;
+    min-width: 1.4em;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--ed-bg);
+    color: var(--vim-glow);
+    border-radius: 6px;
+    padding: 0 6px;
+    box-shadow: 0 2px 0 var(--line);
+  }
+  /* Filled, unlike "↺ やり直す", because it is the one step to take now and only redoes this TODO. */
+  #btn-retry {
+    background: var(--warn);
+    color: #2a1606;
+  }
+  @keyframes retry-in {
+    from {
+      transform: translateY(-4px) scale(0.98);
+      opacity: 0;
+    }
+  }
+  @media (max-width: 520px) {
+    .retry {
+      grid-template-columns: auto 1fr;
+    }
+    #btn-retry {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
+  }
   .qactions {
     display: flex;
     gap: 8px;
@@ -190,7 +257,8 @@ const no = lesson.id.replace('-', '.');
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .btn:global(.attention) {
+    .btn:global(.attention),
+    .retry {
       animation: none;
     }
   }

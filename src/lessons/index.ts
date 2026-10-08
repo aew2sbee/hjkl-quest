@@ -4,11 +4,12 @@ import lesson1_3 from './1-3';
 import lesson1_4 from './1-4';
 import lesson1_5 from './1-5';
 import lesson1_6 from './1-6';
+import lesson2_1 from './2-1';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {
@@ -32,7 +33,19 @@ export const chapters: ChapterOutline[] = [
       { id: '1-6', title: '保存して終了' },
     ],
   },
-  { no: 2, title: '削除コマンド', lessons: [] },
+  {
+    no: 2,
+    title: '削除コマンド',
+    lessons: [
+      { id: '2-1', title: 'dw で単語を削除' },
+      { id: '2-2', title: 'd$ で行末まで削除' },
+      { id: '2-3', title: 'オペレータとモーション' },
+      { id: '2-4', title: 'カウントで移動' },
+      { id: '2-5', title: 'カウント付きの削除' },
+      { id: '2-6', title: 'dd で行を削除' },
+      { id: '2-7', title: '取り消しとやり直し' },
+    ],
+  },
   { no: 3, title: '置換と変更', lessons: [] },
   { no: 4, title: '検索と移動', lessons: [] },
   { no: 5, title: 'ファイル操作', lessons: [] },
