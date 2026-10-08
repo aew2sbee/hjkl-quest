@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createLessonEditor, type EditorHandlers } from '../src/engine/editor';
 import { classifyKey, startProgress, step, type Progress } from '../src/engine/judge';
 import lesson2_1 from '../src/lessons/2-1';
+import lesson2_2 from '../src/lessons/2-2';
 import type { Lesson } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -104,5 +105,19 @@ describe('lesson 2-1 in Vim', () => {
     const p = play(lesson2_1, keys('w w w x x x x x'));
     expect(p.done).toBe(0);
     expect(p.wrong?.id).toBe('delete-very');
+  });
+});
+
+describe('lesson 2-2 in Vim', () => {
+  it('clears in optimalKeys with 5w l d$, j w l d$', () => {
+    const seq = keys('w w w w w l d$ j w l d$');
+    expect(play(lesson2_2, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson2_2.optimalKeys);
+  });
+
+  it('asks for d$ when the end is deleted word by word', () => {
+    const p = play(lesson2_2, keys('w w w w w l dw dw dw dw dw'));
+    expect(p.done).toBe(0);
+    expect(p.wrong?.id).toBe('cut-lunch');
   });
 });
