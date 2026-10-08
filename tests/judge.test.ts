@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advance, classifyKey, highlightFor, keyName } from '../src/engine/judge';
+import { advance, classifyKey, highlightFor, keyName, startProgress, step } from '../src/engine/judge';
 import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
@@ -7,16 +7,18 @@ import lesson1_3 from '../src/lessons/1-3';
 import lesson1_4 from '../src/lessons/1-4';
 import lesson1_5 from '../src/lessons/1-5';
 import lesson1_6 from '../src/lessons/1-6';
+import lesson2_1 from '../src/lessons/2-1';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [] });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [], commands: [] });
 const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   lines: lesson1_2.buffer,
   cursor: { line: 0, ch: 0 },
   mode: 'normal',
   screen,
   ran,
+  commands: [],
 });
 const key = (k: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key: k,
@@ -120,6 +122,7 @@ describe('lesson 1-3', () => {
     mode: 'normal',
     screen: 'vim',
     ran: ['vim'],
+    commands: [],
   });
 
   it('is done after fixing all three words', () => {
@@ -152,6 +155,7 @@ describe('lesson 1-4', () => {
     mode,
     screen: 'vim',
     ran: ['vim'],
+    commands: [],
   });
 
   it('is done after adding both words and going back to normal mode', () => {
@@ -179,6 +183,7 @@ describe('lesson 1-5', () => {
     mode,
     screen: 'vim',
     ran: ['vim'],
+    commands: [],
   });
   const [sun, cats] = lesson1_5.buffer;
   const sunDone = '---> The sun rises in the east.';
@@ -216,6 +221,7 @@ describe('lesson 1-6', () => {
     mode: 'normal',
     screen,
     ran,
+    commands: [],
   });
   const fixed = '---> Remember to buy milk.';
 
@@ -244,6 +250,59 @@ describe('lesson 1-6', () => {
     const fix = 2 + (line.length - 1 - (line.indexOf('yy') + 1)) + 1;
     expect(fix).toBeLessThan(line.indexOf('yy') + 1);
     expect(open + fix + ':wq'.length + 1).toBe(lesson1_6.optimalKeys);
+  });
+});
+
+describe('lesson 2-1', () => {
+  const line = (text: string, commands: string[]): Snapshot => ({
+    lines: [text],
+    cursor: { line: 0, ch: 0 },
+    mode: 'normal',
+    screen: 'vim',
+    ran: ['vim'],
+    commands,
+  });
+  const noVery = '---> Please keep the noisy important words only.';
+  const noNoisy = '---> Please keep very the important words only.';
+  const goal = '---> Please keep the important words only.';
+
+  it('is done after deleting both words with dw', () => {
+    let p = step(lesson2_1, startProgress(), line(noVery, ['w', 'w', 'w', 'dw']));
+    expect(p).toMatchObject({ done: 1, wrong: undefined });
+    p = step(lesson2_1, p, line(goal, ['w', 'w', 'w', 'dw', 'w', 'dw']));
+    expect(p).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('asks to try again with dw when a word was deleted with x', () => {
+    const p = step(lesson2_1, startProgress(), line(noVery, ['w', 'w', 'w', 'x', 'x', 'x', 'x', 'x']));
+    expect(p.done).toBe(0);
+    expect(p.wrong?.id).toBe('delete-very');
+  });
+
+  it('remembers which command made each fix, even across later commands', () => {
+    let p = step(lesson2_1, startProgress(), line(noVery, ['x']));
+    p = step(lesson2_1, p, line(noVery, ['x', 'w']));
+    expect(p).toMatchObject({ done: 0 });
+    expect(p.holds.get('delete-very')).toBe('x');
+  });
+
+  it('counts the second word deleted first with dw, but not with x', () => {
+    let p = step(lesson2_1, startProgress(), line(noNoisy, ['dw']));
+    expect(p).toMatchObject({ done: 0, wrong: undefined });
+    p = step(lesson2_1, p, line(goal, ['dw', 'dw']));
+    expect(p.done).toBe(2);
+
+    p = step(lesson2_1, startProgress(), line(noNoisy, ['x']));
+    expect(p.wrong?.id).toBe('delete-noisy');
+    p = step(lesson2_1, p, line(goal, ['x', 'dw']));
+    expect(p).toMatchObject({ done: 1 });
+    expect(p.wrong?.id).toBe('delete-noisy');
+  });
+
+  it('stops the wrong-way warning once the text no longer holds', () => {
+    let p = step(lesson2_1, startProgress(), line(noVery, ['x']));
+    p = step(lesson2_1, p, line('---> Please keep the oisy important words only.', ['x', 'x']));
+    expect(p.wrong).toBeUndefined();
   });
 });
 
@@ -294,8 +353,12 @@ describe('nextLesson', () => {
     expect(nextLesson('1-5')).toEqual({ id: '1-6', title: '保存して終了', ready: true });
   });
 
+  it('goes on to the next chapter', () => {
+    expect(nextLesson('1-6')).toEqual({ id: '2-1', title: 'dw で単語を削除', ready: true });
+  });
+
   it('is undefined after the last lesson', () => {
-    expect(nextLesson('1-6')).toBeUndefined();
+    expect(nextLesson('2-7')).toBeUndefined();
   });
 });
 

@@ -3,7 +3,7 @@
 サービスがどう動くかを書く。レッスンごとの練習文と TODO は [lessons.md](lessons.md)、技術の選び方や進め方は [plan.md](plan.md) を見ること。
 
 - モックアップ: [mockup.html](mockup.html)
-- 最終更新: 2026-10-06
+- 最終更新: 2026-10-08
 
 ---
 
@@ -71,7 +71,9 @@
 - `:wq` を習った後のレッスンは、`:wq` でシェルに戻るとクリア（案）
 
 ### 誤った方法で達成したとき
-- 「テキストは直せました！ でも今回は `dw` で挑戦してみよう」と表示し、[もう一度] ボタンで課題を始め直す
+- TODO の下に「テキストは直せました！ でも今回は `dw` で挑戦してみよう」と表示する（移動の TODO では「目的地には着けました！」）。色はオレンジで、赤は使わない
+- [もう一度] ボタンで、今の TODO を始めたときの文とカーソルの位置に戻す。先の TODO を別のコマンドで直したまま今の TODO を達成したときは、その直しも消えるように、別のコマンドで直す前の TODO まで戻す
+- 先の TODO の直しを別のコマンドでしたときも、その場で伝える。直しは文に残り、あとで数えてしまうため。移動の TODO は今の TODO のときだけ伝える（カーソルはすぐ離れるため）
 - 不正解という言葉は使わない
 
 ## 4. レッスンの定義
@@ -83,37 +85,31 @@ src/lessons/1-3.ts         練習テキスト・TODO の判定・必須コマン
 ```
 
 ```ts
-// src/lessons/1-3.ts
+// src/lessons/2-1.ts（説明文・ヒントなどは省略）
+const goal = "---> Please keep the important words only.";
+
 export default defineLesson({
-  id: "1-3",
-  buffer: [
-    "---> My doog likess to chasee red balls.",
-  ],
+  id: "2-1",
+  buffer: ["---> Please keep very the noisy important words only."],
+  keys: ["h", "j", "k", "l", "x", "i", "A", "d", "w", ":"], // 矢印キーなど、ここにないキーは Vim に渡さない
   todos: [
     {
-      id: "fix-dog",
-      check: (s) => s.line(0).includes("My dog "),
-      require: { commands: ["x"], forbid: ["arrows"] },
+      id: "delete-very",
+      mark: "very",
+      done: (s) => s.lines[0] === "---> Please keep the noisy important words only." || s.lines[0] === goal,
+      require: ["dw"], // この条件を成り立たせたコマンドが dw でなければ「もう一度」
     },
-    {
-      id: "fix-likes",
-      check: (s) => s.line(0).includes(" likes to "),
-      require: { commands: ["x"], forbid: ["arrows"] },
-    },
-    {
-      id: "fix-chase",
-      check: (s) => s.line(0) === "---> My dog likes to chase red balls.",
-      require: { commands: ["x"], forbid: ["arrows"] },
-    },
+    // delete-noisy も同じ形
   ],
-  optimalKeys: 32, // シェルの vim と Enter（4キー）＋ 行頭から hjkl と x だけで直したときのキー数
+  optimalKeys: 12, // シェルの vim と Enter（4キー）＋ www dw w dw
 });
 ```
 
 ### 判定の仕組み
 - **バッファ**: テキストが目標どおりか（lessons.md の「文」）
 - **カーソル・モード**: 指定の位置・モードか（lessons.md の「位置」）
-- **キー履歴**: `vim-keypress` / `vim-command-done` イベントでコマンドを記録し、`require` を満たしたかを見る（lessons.md の「実行」と「必須」）
+- **キー履歴**: ノーマルモードで押したキーを、Vim の `vim-command-done` イベントで1つのコマンド（`dw` `2w` `x` など）にまとめて記録する。挿入モードで打った文字、`Esc`、`:` からの Ex コマンドは入れない。Vim はコマンドを実行する前にこのイベントを出すので、文やカーソルが変わったときには、変えたコマンドが履歴の最後にある
+- **必須コマンド**（TODO の `require`）: TODO の条件が成り立った瞬間の、履歴の最後のコマンドを覚えておく。それが `require` になければ、条件を満たしても達成にせず「誤った方法で達成したとき」の案内を出す（lessons.md の「必須」）
 - `2dw` と `dwdw` のように複数の書き方がある課題は、課題ごとに許可するものを指定する
 - **使えるキー**: レッスンごとに Vim に渡すキーを決める（`keys`）。`Esc` はいつでも使える。それ以外のキーは Vim に渡さず、矢印キーなら「hjkl で！」、ほかは「まだ習っていないキー」と伝える。Tab と、Alt・Meta を押しながらのキーはブラウザに任せる
 - **挿入モードのキー**: 挿入モードのあいだは、文字・Space・Backspace をそのまま Vim に渡す（入力した文字はコマンドではなくテキストになるため）。Enter は行が分かれるので止める

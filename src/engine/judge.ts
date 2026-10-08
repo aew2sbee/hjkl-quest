@@ -46,10 +46,44 @@ export function highlightFor(todo: Todo | undefined, lines: string[]): Span | nu
 }
 
 /**
- * Returns how many TODOs are done after this snapshot. TODOs are done in order:
- * only the current one can be completed, so reaching a later target early does not count.
+ * Where the TODOs stand. `holds` has each TODO not done yet whose condition holds, with the
+ * command that made it hold (null when it already held as Vim opened). `wrong` is a TODO that
+ * was made to hold by a command it does not allow.
  */
-export function advance(lesson: Lesson, done: number, s: Snapshot): number {
-  while (done < lesson.todos.length && lesson.todos[done].done(s)) done++;
-  return done;
+export interface Progress {
+  done: number;
+  holds: Map<string, string | null>;
+  wrong?: Todo;
 }
+
+export const startProgress = (done = 0): Progress => ({ done, holds: new Map() });
+
+const allowed = (todo: Todo, by: string | null) => !todo.require || by === null || todo.require.includes(by);
+
+/**
+ * Judges the TODOs against a new snapshot. TODOs are done in order: only the current one can
+ * be completed, so reaching a later target early does not count. A later text fix does count
+ * once the TODOs before it are done, as long as it was made with an allowed command.
+ */
+export function step(lesson: Lesson, p: Progress, s: Snapshot): Progress {
+  const by = s.commands.at(-1) ?? null;
+  const holds = new Map<string, string | null>();
+  for (const todo of lesson.todos.slice(p.done)) {
+    if (todo.done(s)) holds.set(todo.id, p.holds.has(todo.id) ? p.holds.get(todo.id)! : by);
+  }
+  const counts = (todo: Todo) => holds.has(todo.id) && allowed(todo, holds.get(todo.id)!);
+  let done = p.done;
+  while (done < lesson.todos.length && counts(lesson.todos[done])) {
+    holds.delete(lesson.todos[done].id);
+    done++;
+  }
+  // A target only counts while it is the current one (the cursor moves on), but a fix stays in the text.
+  const wrong = lesson.todos
+    .slice(done)
+    .find((t, i) => holds.has(t.id) && !counts(t) && (i === 0 || !t.target));
+  return { done, holds, wrong };
+}
+
+/** How many TODOs are done after this snapshot, starting from `done`. */
+export const advance = (lesson: Lesson, done: number, s: Snapshot): number =>
+  step(lesson, startProgress(done), s).done;

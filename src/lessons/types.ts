@@ -15,6 +15,12 @@ export interface EditorSnapshot {
   cursor: Pos;
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
+  /**
+   * Normal-mode commands run since Vim opened, in order, e.g. ["w", "dw", "i"].
+   * Vim counts a command as run before it moves the cursor or changes the text,
+   * so during that change the command is already last.
+   */
+  commands: string[];
 }
 
 /** What the judge sees after every key. */
@@ -34,6 +40,11 @@ export interface Todo {
   /** One is picked at random when the TODO is done. */
   praise: string[];
   done: (s: Snapshot) => boolean;
+  /**
+   * Commands that may make `done` come true, e.g. ["dw"]. When another command does it,
+   * the learner is asked to try again with the first of these. Any command when unset.
+   */
+  require?: string[];
   /** Highlighted in the editor while this TODO is the current one. */
   target?: Pos;
   /**

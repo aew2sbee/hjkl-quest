@@ -59,10 +59,10 @@ const next = nextLesson(lesson.id);
 
 <script>
   import { createLessonEditor } from '../../engine/editor';
-  import { advance, highlightFor, hjklFor, type KeyVerdict } from '../../engine/judge';
+  import { highlightFor, hjklFor, startProgress, step, type KeyVerdict, type Progress } from '../../engine/judge';
   import { createShell, parseShellCommand } from '../../engine/shell';
   import { lessons } from '../../lessons';
-  import type { Snapshot } from '../../lessons/types';
+  import type { Pos, Snapshot } from '../../lessons/types';
 
   const $ = (id: string) => document.getElementById(id)!;
   const lesson = lessons[document.querySelector<HTMLElement>('[data-lesson]')!.dataset.lesson!];
@@ -81,7 +81,10 @@ const next = nextLesson(lesson.id);
   const startScreen: Snapshot['screen'] = lesson.shell ? 'shell' : 'vim';
   let screen = startScreen;
   let ran: string[] = [];
-  let done = 0;
+  let progress = startProgress();
+  // Where "もう一度" goes back to: the text, cursor and progress when the current TODO began,
+  // or an earlier TODO's start if a later fix was made the wrong way since then.
+  let checkpoint: { lines?: string[]; cursor?: Pos; progress: Progress } = { progress };
   let keyCount = 0;
   // What :wq last wrote. Opening the file again shows this instead of the lesson's text.
   let saved: string[] | undefined;
@@ -183,11 +186,15 @@ const next = nextLesson(lesson.id);
     mode.textContent = s.mode.toUpperCase();
     mode.dataset.mode = s.mode;
 
-    const next = advance(lesson, done, s);
-    const advanced = next > done;
-    done = next;
+    const before = progress.done;
+    progress = step(lesson, progress, s);
+    const { done } = progress;
+    // Going back only makes sense inside Vim; after :q! the text is gone anyway.
+    showRetry(screen === 'vim' ? progress.wrong : undefined);
     showHighlight(s.lines);
-    if (!advanced) return;
+    if (done === before) return;
+    // Not while a later fix was made the wrong way, or going back would keep that fix.
+    if (!progress.wrong) checkpoint = { lines: s.lines, cursor: s.cursor, progress };
     const finished = lesson.todos[done - 1];
     renderTodos();
     if (done < lesson.todos.length) {
@@ -204,6 +211,7 @@ const next = nextLesson(lesson.id);
   }
 
   function renderTodos() {
+    const { done } = progress;
     todoEls.forEach((el, i) => {
       el.classList.toggle('done', i < done);
       el.classList.toggle('now', i === done);
@@ -212,7 +220,7 @@ const next = nextLesson(lesson.id);
 
   // Edits move the marked word, so this runs after every change, not only when a TODO is done.
   function showHighlight(lines: string[]) {
-    const span = highlightFor(lesson.todos[done], lines);
+    const span = highlightFor(lesson.todos[progress.done], lines);
     const key = JSON.stringify(span);
     if (key === shownHighlight) return;
     shownHighlight = key;
@@ -221,9 +229,40 @@ const next = nextLesson(lesson.id);
 
   function resetEditor(lines?: string[]) {
     editor.reset(lines);
+    progress = startProgress(progress.done);
+    checkpoint = { lines, progress };
     shownHighlight = '';
     stuckNoticed = false;
   }
+
+  // "dw" → ["d", "w"], "Ctrl-r" → ["Ctrl-r"]: one cap per key pressed.
+  const keyCaps = (command: string) => command.match(/Ctrl-.|./g) ?? [];
+
+  // Shown while a TODO was done with a command other than the one the lesson teaches.
+  let shownWrong: string | undefined;
+  function showRetry(wrong: Progress['wrong']) {
+    if (wrong?.id === shownWrong) return;
+    shownWrong = wrong?.id;
+    $('retry').hidden = !wrong;
+    if (!wrong) return;
+    $('retry-what').textContent = wrong.target ? '目的地には着けました！' : 'テキストは直せました！';
+    const caps = keyCaps(wrong.require![0]).map((k) => {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = k;
+      return kbd;
+    });
+    $('retry-how').replaceChildren('でも今回は ', ...caps, ' で挑戦してみよう');
+  }
+
+  // Back to where the current TODO began, so it can be done again with the right command.
+  $('btn-retry').addEventListener('click', () => {
+    editor.reset(checkpoint.lines, checkpoint.cursor);
+    progress = checkpoint.progress;
+    shownHighlight = '';
+    renderTodos();
+    judge();
+    focusScreen();
+  });
 
   function setCmdline(text: string, kind?: 'err' | 'ok') {
     const el = $('cmdline');
@@ -255,13 +294,13 @@ const next = nextLesson(lesson.id);
 
   $('btn-hint').addEventListener('click', () => {
     const hint = $('hint');
-    hint.innerHTML = `💡 ${lesson.todos[Math.min(done, lesson.todos.length - 1)].hint}`;
+    hint.innerHTML = `💡 ${lesson.todos[Math.min(progress.done, lesson.todos.length - 1)].hint}`;
     hint.hidden = false;
     focusScreen();
   });
 
   function restart() {
-    done = 0;
+    progress = startProgress();
     keyCount = 0;
     ran = [];
     saved = undefined;
