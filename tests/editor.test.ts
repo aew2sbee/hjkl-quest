@@ -5,6 +5,7 @@ import { classifyKey, startProgress, step, type Progress } from '../src/engine/j
 import lesson2_1 from '../src/lessons/2-1';
 import lesson2_2 from '../src/lessons/2-2';
 import lesson2_3 from '../src/lessons/2-3';
+import lesson2_4 from '../src/lessons/2-4';
 import type { Lesson } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -138,5 +139,31 @@ describe('lesson 2-3 in Vim', () => {
     const p = play(lesson2_3, keys('w w w e h h x x x'));
     expect(p.done).toBe(0);
     expect(p.wrong?.id).toBe('cut-ish');
+  });
+});
+
+describe('lesson 2-4 in Vim', () => {
+  it('clears in optimalKeys with 3w, 3e, 0', () => {
+    const seq = keys('3w 3e 0');
+    expect(play(lesson2_4, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson2_4.optimalKeys);
+  });
+
+  it('asks for 3w when yellow is reached with www', () => {
+    const p = play(lesson2_4, keys('w w w'));
+    expect(p.done).toBe(0);
+    expect(p.wrong?.id).toBe('reach-yellow');
+  });
+
+  it('drops the warning once the cursor moves on, and does not warn about later targets', () => {
+    expect(play(lesson2_4, keys('w w w w'))).toMatchObject({ done: 0, wrong: undefined });
+    // Back at the line start with h is the last TODO's target, but that TODO is not the current one.
+    expect(play(lesson2_4, keys('l h'))).toMatchObject({ done: 0, wrong: undefined });
+  });
+
+  it('leaves the text as it is', () => {
+    const { editor, press } = open(lesson2_4);
+    press('x', 'd', 'w');
+    expect(editor.snapshot().lines).toEqual(lesson2_4.buffer);
   });
 });
