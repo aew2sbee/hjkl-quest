@@ -76,7 +76,7 @@ export interface Lesson {
   start: Pos;
   readOnly: boolean;
   /**
-   * Keys passed to Vim, as `KeyboardEvent.key` values. Escape is always allowed.
+   * Keys passed to Vim, as `KeyboardEvent.key` values, or "Ctrl-r" for Ctrl+R (see keyName). Escape is always allowed.
    * Anything else is stopped before Vim sees it, so a TODO can only be done with
    * the commands the lesson teaches.
    */

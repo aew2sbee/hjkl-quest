@@ -73,6 +73,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let newUndoStep = false;
   // The line U puts back (1-based): the last line edited, as it was before the edits that are still in a row on it.
   let lineBefore: { line: number; text: string } | null = null;
+  // Set by u and Ctrl-R: the next edit starts a new run of edits, even on the same line.
+  let lineStale = false;
 
   // Runs before the Vim plugin. Returning true stops the key there (and prevents the browser default).
   const guard = Prec.highest(
@@ -118,7 +120,9 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         EditorView.contentAttributes.of({ 'aria-label': `Vim エディタ: ${lesson.fileName}` }),
         EditorView.updateListener.of((u) => {
           for (const tr of u.transactions) {
-            if (tr.docChanged && !tr.annotation(byUndoLine)) rememberLine(tr.startState.doc, tr.changes);
+            if (!tr.docChanged || tr.annotation(byUndoLine)) continue;
+            if (tr.isUserEvent('undo') || tr.isUserEvent('redo')) lineStale = true;
+            else rememberLine(tr.startState.doc, tr.changes);
           }
           if (u.docChanged || u.selectionSet) handlers.onChange(snapshot());
         }),
@@ -135,10 +139,11 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     });
     const [line] = touched;
     if (touched.size !== 1) lineBefore = null;
-    else if (lineBefore?.line !== line) lineBefore = { line, text: before.line(line).text };
+    else if (lineStale || lineBefore?.line !== line) lineBefore = { line, text: before.line(line).text };
+    lineStale = false;
   }
 
-  // U: put the last edited line back as it was. U is a change too, so u undoes it and U again redoes it.
+  // U: put the last edited line back as it was. U is a change too, so u undoes it, and U right after U swaps it back.
   function undoLine() {
     if (!lineBefore || lineBefore.line > view.state.doc.lines) return;
     const line = view.state.doc.line(lineBefore.line);
@@ -172,6 +177,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     typing = [];
     newUndoStep = false;
     lineBefore = null;
+    lineStale = false;
     const cm = getCM(view);
     if (!cm) return;
     exHandlers.set(cm, handlers);

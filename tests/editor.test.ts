@@ -242,6 +242,22 @@ describe('undo in the editor', () => {
     expect(editor.snapshot().lines[0]).toBe(twoFixed);
   });
 
+  it('remembers the line afresh for U after an undo', () => {
+    const { editor, press } = open(lesson2_7);
+    press('e', 'e', 'x', 'e', 'x', 'U', 'u', 'u', 'u');
+    expect(editor.snapshot().lines[0]).toBe(start);
+    press('x', 'U');
+    expect(editor.snapshot().lines[0]).toBe(start);
+  });
+
+  it('stops Ctrl-R before the browser reloads the page', () => {
+    const { press } = open(lesson2_7);
+    press('x');
+    const e = new KeyboardEvent('keydown', { key: 'r', ctrlKey: true, bubbles: true, cancelable: true });
+    document.querySelector('.cm-content')!.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
+  });
+
   it('undoes text typed in one visit to insert mode in one step', () => {
     const { editor, press } = open(lesson2_7);
     // jsdom does not type characters from keydown, so insert them the way typing would.
