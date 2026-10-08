@@ -78,6 +78,9 @@ const next = nextLesson(lesson.id);
     ArrowRight: '→',
   };
 
+  // "Ctrl-r" is shown as "Ctrl-R", the way Vim's docs and the lessons write it.
+  const labelFor = (name: string) => keyLabels[name] ?? name.replace(/^Ctrl-(.)$/, (_, k: string) => `Ctrl-${k.toUpperCase()}`);
+
   const startScreen: Snapshot['screen'] = lesson.shell ? 'shell' : 'vim';
   let screen = startScreen;
   let ran: string[] = [];
@@ -160,7 +163,7 @@ const next = nextLesson(lesson.id);
   }
 
   function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {
-    const label = keyLabels[name] ?? name;
+    const label = labelFor(name);
     logKey(label, verdict !== 'pass');
     if (verdict === 'pass') {
       keyCount++;
@@ -168,7 +171,7 @@ const next = nextLesson(lesson.id);
     } else if (verdict === 'arrow') {
       toast('🙅', `矢印キーじゃなくて ${hjklFor(name)} で！`, 'hjkl なら手がホームポジションから離れないよ', true);
     } else {
-      setCmdline(`"${label}" はまだ習っていないキーだよ。今は ${lesson.keys.join(' ')} を使おう`, 'err');
+      setCmdline(`"${label}" はまだ習っていないキーだよ。今は ${lesson.keys.map(labelFor).join(' ')} を使おう`, 'err');
     }
   }
 

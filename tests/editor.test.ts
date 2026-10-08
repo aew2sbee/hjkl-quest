@@ -10,6 +10,7 @@ import lesson2_3 from '../src/lessons/2-3';
 import lesson2_4 from '../src/lessons/2-4';
 import lesson2_5 from '../src/lessons/2-5';
 import lesson2_6 from '../src/lessons/2-6';
+import lesson2_7 from '../src/lessons/2-7';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -213,5 +214,71 @@ describe('lesson 2-6 in Vim', () => {
   it('asks for 2dd when the two lines are deleted with dj', () => {
     const p = play(lesson2_6, keys('j dd j dj'));
     expect(p.wrong?.id).toBe('cut-moon-sock');
+  });
+});
+
+describe('undo in the editor', () => {
+  const start = lesson2_7.buffer[0];
+
+  it('undoes one command at a time and redoes with Ctrl-R', () => {
+    const { editor, press } = open(lesson2_7);
+    press('e', 'e', 'x', 'e', 'x');
+    const twoFixed = editor.snapshot().lines[0];
+    press('u');
+    expect(editor.snapshot().lines[0]).toBe('---> This linee hass extraa letterss.');
+    press('u');
+    expect(editor.snapshot().lines[0]).toBe(start);
+    press('Ctrl-r', 'Ctrl-r');
+    expect(editor.snapshot().lines[0]).toBe(twoFixed);
+  });
+
+  it('puts the line back with U, and U is undone with u', () => {
+    const { editor, press } = open(lesson2_7);
+    press('e', 'e', 'x', 'e', 'x');
+    const twoFixed = editor.snapshot().lines[0];
+    press('U');
+    expect(editor.snapshot()).toMatchObject({ lines: [start], commands: ['e', 'e', 'x', 'e', 'x', 'U'] });
+    press('u');
+    expect(editor.snapshot().lines[0]).toBe(twoFixed);
+  });
+
+  it('remembers the line afresh for U after an undo', () => {
+    const { editor, press } = open(lesson2_7);
+    press('e', 'e', 'x', 'e', 'x', 'U', 'u', 'u', 'u');
+    expect(editor.snapshot().lines[0]).toBe(start);
+    press('x', 'U');
+    expect(editor.snapshot().lines[0]).toBe(start);
+  });
+
+  it('stops Ctrl-R before the browser reloads the page', () => {
+    const { press } = open(lesson2_7);
+    press('x');
+    const e = new KeyboardEvent('keydown', { key: 'r', ctrlKey: true, bubbles: true, cancelable: true });
+    document.querySelector('.cm-content')!.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('undoes text typed in one visit to insert mode in one step', () => {
+    const { editor, press } = open(lesson2_7);
+    // jsdom does not type characters from keydown, so insert them the way typing would.
+    press('i');
+    const view = EditorView.findFromDOM(document.querySelector<HTMLElement>('.cm-editor')!)!;
+    for (const ch of 'ab') view.dispatch(view.state.replaceSelection(ch), { userEvent: 'input.type' });
+    press('Escape', 'u');
+    expect(editor.snapshot().lines[0]).toBe(start);
+  });
+});
+
+describe('lesson 2-7 in Vim', () => {
+  const fix = 'e e x e x e x e x e x';
+
+  it('clears in optimalKeys: fix, U, u, u five times, Ctrl-R five times', () => {
+    const seq = keys(`${fix} U u u u u u u Ctrl-r Ctrl-r Ctrl-r Ctrl-r Ctrl-r`);
+    expect(play(lesson2_7, seq)).toMatchObject({ done: 5, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson2_7.optimalKeys);
+  });
+
+  it('does not count going back to the start with u as U', () => {
+    expect(play(lesson2_7, keys(`${fix} u u u u u`)).done).toBe(1);
   });
 });

@@ -1,4 +1,5 @@
-import { EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
+import { history, isolateHistory } from '@codemirror/commands';
+import { Annotation, ChangeSet, EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
 import type { EditorSnapshot, Lesson, Pos, Span } from '../lessons/types';
@@ -45,14 +46,21 @@ const targetField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Ex commands are global in codemirror-vim, so route :q and :wq to the editor that ran them.
+// Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 const exHandlers = new WeakMap<object, EditorHandlers>();
+const lineUndoers = new WeakMap<object, () => void>();
 Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
   exHandlers.get(cm)?.onQuit(params.argString?.trim() === '!');
 });
 Vim.defineEx('wq', 'wq', (cm: object) => {
   exHandlers.get(cm)?.onWriteQuit();
 });
+// codemirror-vim has no U in normal mode, so it is added here (see undoLine in createLessonEditor).
+Vim.defineAction('undoLine', (cm: object) => lineUndoers.get(cm)?.());
+Vim.mapCommand('U', 'action', 'undoLine', {}, { context: 'normal', isEdit: true });
+
+// Marks the change U makes, so it does not count as a new edit of the line.
+const byUndoLine = Annotation.define<boolean>();
 
 /** Puts a Vim editor for `lesson` into `parent`. */
 export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers: EditorHandlers): LessonEditor {
@@ -60,6 +68,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   // Normal-mode commands run so far, and the keys of the one being typed (e.g. "d" before "w").
   let commands: string[] = [];
   let typing: string[] = [];
+  // Set when a command completes, so its first change starts a new undo step: u undoes one command,
+  // and everything typed in one visit to insert mode, like Vim.
+  let newUndoStep = false;
+  // The line U puts back (1-based): the last line edited, as it was before the edits that are still in a row on it.
+  let lineBefore: { line: number; text: string } | null = null;
+  // Set by u and Ctrl-R: the next edit starts a new run of edits, even on the same line.
+  let lineStale = false;
 
   // Runs before the Vim plugin. Returning true stops the key there (and prevents the browser default).
   const guard = Prec.highest(
@@ -93,15 +108,54 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         guard,
         vim(),
         lineNumbers(),
+        // Changes join into one undo step until the next command starts a new one.
+        history({ newGroupDelay: Number.MAX_SAFE_INTEGER, joinToEvent: () => true }),
+        EditorState.transactionExtender.of((tr) => {
+          if (!newUndoStep || !tr.docChanged || tr.isUserEvent('undo') || tr.isUserEvent('redo')) return null;
+          newUndoStep = false;
+          return { annotations: isolateHistory.of('before') };
+        }),
         targetField,
         EditorState.readOnly.of(lesson.readOnly),
         EditorView.contentAttributes.of({ 'aria-label': `Vim エディタ: ${lesson.fileName}` }),
         EditorView.updateListener.of((u) => {
+          for (const tr of u.transactions) {
+            if (!tr.docChanged || tr.annotation(byUndoLine)) continue;
+            if (tr.isUserEvent('undo') || tr.isUserEvent('redo')) lineStale = true;
+            else rememberLine(tr.startState.doc, tr.changes);
+          }
           if (u.docChanged || u.selectionSet) handlers.onChange(snapshot());
         }),
       ],
     });
   };
+
+  // Edits on one line in a row keep the line as it was before the first; an edit elsewhere starts over.
+  function rememberLine(before: Text, changes: ChangeSet) {
+    const touched = new Set<number>();
+    changes.iterChangedRanges((fromA, toA) => {
+      touched.add(before.lineAt(fromA).number);
+      touched.add(before.lineAt(toA).number);
+    });
+    const [line] = touched;
+    if (touched.size !== 1) lineBefore = null;
+    else if (lineStale || lineBefore?.line !== line) lineBefore = { line, text: before.line(line).text };
+    lineStale = false;
+  }
+
+  // U: put the last edited line back as it was. U is a change too, so u undoes it, and U right after U swaps it back.
+  function undoLine() {
+    if (!lineBefore || lineBefore.line > view.state.doc.lines) return;
+    const line = view.state.doc.line(lineBefore.line);
+    const restore = lineBefore.text;
+    lineBefore = { line: line.number, text: line.text };
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert: restore },
+      selection: { anchor: line.from },
+      annotations: [byUndoLine.of(true), isolateHistory.of('full')],
+      userEvent: 'input',
+    });
+  }
 
   const view = new EditorView({ state: makeState(), parent });
 
@@ -121,14 +175,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     mode = 'normal';
     commands = [];
     typing = [];
+    newUndoStep = false;
+    lineBefore = null;
+    lineStale = false;
     const cm = getCM(view);
     if (!cm) return;
     exHandlers.set(cm, handlers);
+    lineUndoers.set(cm, undoLine);
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
     // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
       if (typing.length) commands.push(typing.join(''));
       typing = [];
+      newUndoStep = true;
     });
     cm.on('vim-mode-change', (e: { mode: string }) => {
       mode = e.mode;
