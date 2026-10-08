@@ -470,10 +470,13 @@ const next = nextLesson(lesson.id);
     color: var(--ed-fg);
     font: inherit;
   }
+  /* A faint backing as well as the glow, so a marked space (where d$ starts in 2.2) shows too. */
   #editor :global(.cm-target) {
     color: var(--star);
     font-weight: 700;
     text-shadow: 0 0 8px var(--star);
+    background: color-mix(in srgb, var(--star) 16%, transparent);
+    border-radius: 3px;
   }
 
   .status {
