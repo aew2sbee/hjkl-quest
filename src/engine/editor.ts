@@ -125,6 +125,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     if (!cm) return;
     exHandlers.set(cm, handlers);
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
+    // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
       if (typing.length) commands.push(typing.join(''));
       typing = [];

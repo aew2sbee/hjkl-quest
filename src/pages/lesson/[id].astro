@@ -82,7 +82,8 @@ const next = nextLesson(lesson.id);
   let screen = startScreen;
   let ran: string[] = [];
   let progress = startProgress();
-  // Where "もう一度" goes back to: the text, cursor and progress when the current TODO began.
+  // Where "もう一度" goes back to: the text, cursor and progress when the current TODO began,
+  // or an earlier TODO's start if a later fix was made the wrong way since then.
   let checkpoint: { lines?: string[]; cursor?: Pos; progress: Progress } = { progress };
   let keyCount = 0;
   // What :wq last wrote. Opening the file again shows this instead of the lesson's text.
