@@ -200,6 +200,10 @@ describe('lesson 2-6 in Vim', () => {
     expect(4 + seq.length).toBe(lesson2_6.optimalKeys);
   });
 
+  it('also takes the count after the operator', () => {
+    expect(play(lesson2_6, keys('j dd j d2d'))).toMatchObject({ done: 2, wrong: undefined });
+  });
+
   it('asks for 2dd when the two lines are deleted one by one', () => {
     const p = play(lesson2_6, keys('j dd j dd dd'));
     expect(p.done).toBe(1);

@@ -44,7 +44,8 @@ export default defineLesson({
       hint: '<code>the moon</code> の行に下りて、<code>2</code> <code>d</code> <code>d</code> と押そう。',
       praise: ['買えるものだけ残った！', '2行まとめて消せたね！'],
       done: (s) => [goal, text([milk, elephant, bread, eggs])].includes(text(s.lines)),
-      require: ['2dd'],
+      // "d2d" is one command as well and deletes the same lines.
+      require: ['2dd', 'd2d'],
     },
   ],
 });
