@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { EditorView } from '@codemirror/view';
+import { getCM } from '@replit/codemirror-vim';
 import { createLessonEditor, type EditorHandlers } from '../src/engine/editor';
 import { classifyKey, startProgress, step, type Progress } from '../src/engine/judge';
 import lesson2_1 from '../src/lessons/2-1';
@@ -7,7 +9,8 @@ import lesson2_2 from '../src/lessons/2-2';
 import lesson2_3 from '../src/lessons/2-3';
 import lesson2_4 from '../src/lessons/2-4';
 import lesson2_5 from '../src/lessons/2-5';
-import type { Lesson } from '../src/lessons/types';
+import lesson2_6 from '../src/lessons/2-6';
+import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
 const noRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
@@ -31,6 +34,9 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onWriteQuit() {},
     ...handlers,
   });
+  // Vim moves j and k by screen lines, which jsdom cannot measure; move by text lines instead.
+  const cm = getCM(EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!)!;
+  cm.findPosV = (pos: Pos, amount: number) => ({ line: pos.line + amount, ch: pos.ch });
   const content = parent.querySelector<HTMLElement>('.cm-content')!;
   const press = (...keys: string[]) => {
     for (const key of keys) {
@@ -184,5 +190,28 @@ describe('lesson 2-5 in Vim', () => {
     const p = play(lesson2_5, keys('2w dw dw'));
     expect(p.done).toBe(0);
     expect(p.wrong?.id).toBe('cut-one-two');
+  });
+});
+
+describe('lesson 2-6 in Vim', () => {
+  it('clears in optimalKeys with j dd, j 2dd', () => {
+    const seq = keys('j dd j 2dd');
+    expect(play(lesson2_6, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson2_6.optimalKeys);
+  });
+
+  it('also takes the count after the operator', () => {
+    expect(play(lesson2_6, keys('j dd j d2d'))).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('asks for 2dd when the two lines are deleted one by one', () => {
+    const p = play(lesson2_6, keys('j dd j dd dd'));
+    expect(p.done).toBe(1);
+    expect(p.wrong?.id).toBe('cut-moon-sock');
+  });
+
+  it('asks for 2dd when the two lines are deleted with dj', () => {
+    const p = play(lesson2_6, keys('j dd j dj'));
+    expect(p.wrong?.id).toBe('cut-moon-sock');
   });
 });
