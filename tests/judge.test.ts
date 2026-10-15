@@ -326,6 +326,39 @@ describe('lesson 2-1', () => {
   });
 });
 
+describe('step while typing', () => {
+  const lesson2 = {
+    ...lesson,
+    todos: [
+      { ...lesson.todos[0], id: 'first', target: undefined, done: (s: Snapshot) => s.lines[0] === 'a' && s.mode === 'normal', require: ['i'] as [string] },
+      { ...lesson.todos[1], id: 'second', target: undefined, done: (s: Snapshot) => s.lines[1] === 'b' && s.mode === 'normal', require: ['o'] as [string] },
+    ],
+  };
+  const snap = (lines: string[], mode: string, commands: string[]): Snapshot => ({
+    lines,
+    cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
+    mode,
+    screen: 'vim',
+    ran: ['vim'],
+    commands,
+    files: {},
+  });
+
+  it('keeps what made a later TODO hold while text is typed for the current one', () => {
+    let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['o']));
+    p = step(lesson2, p, snap(['', 'b'], 'insert', ['o', 'i']));
+    p = step(lesson2, p, snap(['a', 'b'], 'normal', ['o', 'i']));
+    expect(p).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('does not count a kept hold until its condition is back', () => {
+    let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['o']));
+    p = step(lesson2, p, snap(['a', ''], 'insert', ['o', 'i']));
+    expect(p.done).toBe(0);
+  });
+});
+
 describe('highlightFor', () => {
   it('highlights a target as one character', () => {
     expect(highlightFor(lesson.todos[0], lesson.buffer)).toEqual({ line: 2, ch: 7, length: 1 });
@@ -393,10 +426,15 @@ describe('nextLesson', () => {
     expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: true });
     expect(nextLesson('5-2')).toEqual({ id: '5-3', title: '選んだ行だけ保存', ready: true });
     expect(nextLesson('5-3')).toEqual({ id: '5-4', title: ':r でファイルを読み込む', ready: true });
+    expect(nextLesson('5-4')).toEqual({ id: '6-1', title: 'o と O で行を開く', ready: true });
+  });
+
+  it('says when the next lesson is not built yet', () => {
+    expect(nextLesson('6-1')).toEqual({ id: '6-2', title: 'a で後ろに追加', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
-    expect(nextLesson('5-4')).toBeUndefined();
+    expect(nextLesson('6-5')).toBeUndefined();
   });
 });
 

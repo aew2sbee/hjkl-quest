@@ -23,11 +23,12 @@ import lesson5_1 from './5-1';
 import lesson5_2 from './5-2';
 import lesson5_3 from './5-3';
 import lesson5_4 from './5-4';
+import lesson6_1 from './6-1';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4, lesson5_1, lesson5_2, lesson5_3, lesson5_4].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4, lesson5_1, lesson5_2, lesson5_3, lesson5_4, lesson6_1].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {
@@ -94,7 +95,17 @@ export const chapters: ChapterOutline[] = [
       { id: '5-4', title: ':r でファイルを読み込む' },
     ],
   },
-  { no: 6, title: 'その他の編集', lessons: [] },
+  {
+    no: 6,
+    title: 'その他の編集',
+    lessons: [
+      { id: '6-1', title: 'o と O で行を開く' },
+      { id: '6-2', title: 'a で後ろに追加' },
+      { id: '6-3', title: 'R で上書き' },
+      { id: '6-4', title: 'y と p でコピー' },
+      { id: '6-5', title: ':set で設定' },
+    ],
+  },
   { no: 7, title: 'ヘルプと設定', lessons: [] },
 ];
 
