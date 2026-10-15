@@ -25,6 +25,7 @@ import lesson5_3 from '../src/lessons/5-3';
 import lesson5_4 from '../src/lessons/5-4';
 import lesson6_1 from '../src/lessons/6-1';
 import lesson6_2 from '../src/lessons/6-2';
+import lesson6_3 from '../src/lessons/6-3';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -638,5 +639,23 @@ describe('lesson 6-2 in Vim', () => {
   it('asks for a when the letter is put in with i', () => {
     const p = play(lesson6_2, [...keys('3e l i'), 'e', 'Escape']);
     expect(p.wrong?.id).toBe('fix-like');
+  });
+});
+
+describe('lesson 6-3 in Vim', () => {
+  it('clears in optimalKeys with 2w R 304, 4w R 12', () => {
+    const seq = [...keys('2w R'), ...typed('304'), 'Escape', ...keys('4w R'), ...typed('12'), 'Escape'];
+    expect(play(lesson6_3, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson6_3.optimalKeys);
+  });
+
+  it('overwrites instead of inserting', () => {
+    const { editor, press } = open(lesson6_3);
+    press('2', 'w', 'R', '3', '0');
+    expect(editor.snapshot()).toMatchObject({ mode: 'replace', lines: ['---> Room 30x is on floor xx.'] });
+  });
+
+  it('asks for R when the room is fixed with r', () => {
+    expect(play(lesson6_3, keys('2w r3 l r0 l r4')).wrong?.id).toBe('fix-room');
   });
 });

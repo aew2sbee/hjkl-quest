@@ -93,6 +93,11 @@ describe('classifyKey', () => {
     expect(classifyKey(lesson3_2, key('Enter'), 'normal', true)).toBe('unlearned');
   });
 
+  it('types characters in replace mode too', () => {
+    expect(classifyKey(lesson, key('3'), 'replace')).toBe('pass');
+    expect(classifyKey(lesson, key('Enter'), 'replace')).toBe('unlearned');
+  });
+
   it('types any character and Backspace in insert mode, but not Enter', () => {
     for (const k of ['w', 'G', '0', ' ', '.', 'Backspace']) {
       expect(classifyKey(lesson1_4, key(k), 'insert')).toBe('pass');
@@ -428,10 +433,11 @@ describe('nextLesson', () => {
     expect(nextLesson('5-3')).toEqual({ id: '5-4', title: ':r でファイルを読み込む', ready: true });
     expect(nextLesson('5-4')).toEqual({ id: '6-1', title: 'o と O で行を開く', ready: true });
     expect(nextLesson('6-1')).toEqual({ id: '6-2', title: 'a で後ろに追加', ready: true });
+    expect(nextLesson('6-2')).toEqual({ id: '6-3', title: 'R で上書き', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('6-2')).toEqual({ id: '6-3', title: 'R で上書き', ready: false });
+    expect(nextLesson('6-3')).toEqual({ id: '6-4', title: 'y と p でコピー', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
