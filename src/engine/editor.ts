@@ -7,7 +7,7 @@ import { completions } from './complete';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
-  /** A key pressed in the editor and what happened to it. Not called for modifiers or Tab. */
+  /** A key pressed in the editor and what happened to it. Not called for modifiers, or for Tab outside completion. */
   onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>): void;
   /** Called after anything the judge looks at changes: text, cursor or mode. */
   onChange(s: EditorSnapshot): void;
@@ -67,7 +67,6 @@ const targetField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 interface ExParams {
   argString?: string;
   /** What follows the command, split at spaces. */
@@ -77,6 +76,7 @@ interface ExParams {
   lineEnd?: number;
 }
 
+// Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 interface Route {
   handlers: EditorHandlers;
   undoLine(): void;
@@ -133,7 +133,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let mode = 'normal';
   // The file open: the lesson's, or another one opened with :e.
   let fileName = lesson.fileName;
-  // Normal-mode commands run so far, and the keys of the one being typed (e.g. "d" before "w").
+  // Commands run so far (see EditorSnapshot.commands), and the keys of the one being typed (e.g. "d" before "w").
   let commands: string[] = [];
   let typing: string[] = [];
   // Set when a command completes, so its first change starts a new undo step: u undoes one command,
@@ -349,7 +349,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         complete(e.target, key);
         return;
       }
-      if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(keyName(e), 'pass');
+      if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(key, 'pass');
       // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
       // Like a normal-mode command, it is logged before it changes anything.
       if (e.key === 'Enter' && promptKey === ':') commands.push(`:${e.target.value}`);

@@ -229,10 +229,15 @@ const next = nextLesson(lesson.id);
     judge();
   }
 
-  function onShell(command: string) {
+  // Runs a shell command on the files (rm removes them) and gives what it prints.
+  function runCommand(command: string): string[] {
     const out = runShell(command, files);
     files = out.files;
-    setCmdline(out.lines.join('\n'));
+    return out.lines;
+  }
+
+  function onShell(command: string) {
+    setCmdline(runCommand(command).join('\n'));
     // Running it changes nothing the editor watches, so judge here: the TODO may be to run it.
     judge();
   }
@@ -257,10 +262,7 @@ const next = nextLesson(lesson.id);
 
   // What :r puts in: a file, or what :r !cmd prints.
   function read(source: string): string[] | undefined {
-    if (!source.startsWith('!')) return files[source];
-    const out = runShell(source.slice(1), files);
-    files = out.files;
-    return out.lines;
+    return source.startsWith('!') ? runCommand(source.slice(1)) : files[source];
   }
 
   function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {
