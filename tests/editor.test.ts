@@ -24,6 +24,7 @@ import lesson5_2 from '../src/lessons/5-2';
 import lesson5_3 from '../src/lessons/5-3';
 import lesson5_4 from '../src/lessons/5-4';
 import lesson6_1 from '../src/lessons/6-1';
+import lesson6_2 from '../src/lessons/6-2';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -624,5 +625,18 @@ describe('lesson 6-1 in Vim', () => {
   it('asks for o when the line is opened above Wednesday with O', () => {
     const p = play(lesson6_1, ['j', 'O', ...typed('Tuesday: buy milk'), 'Escape']);
     expect(p.wrong?.id).toBe('open-below');
+  });
+});
+
+describe('lesson 6-2 in Vim', () => {
+  it('clears in optimalKeys with 3e a e, 2e a y, 3e a en', () => {
+    const seq = [...keys('3e a'), 'e', 'Escape', ...keys('2e a'), 'y', 'Escape', ...keys('3e a'), ...typed('en'), 'Escape'];
+    expect(play(lesson6_2, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson6_2.optimalKeys);
+  });
+
+  it('asks for a when the letter is put in with i', () => {
+    const p = play(lesson6_2, [...keys('3e l i'), 'e', 'Escape']);
+    expect(p.wrong?.id).toBe('fix-like');
   });
 });
