@@ -77,10 +77,11 @@ const allowed = (todo: Todo, by: string | null) =>
 export function step(lesson: Lesson, p: Progress, s: Snapshot): Progress {
   const by = s.commands.at(-1) ?? null;
   const holds = new Map<string, string | null>();
-  // While text is being typed, a TODO that waits for Esc stops holding for a moment. Keep what made it hold.
-  const typing = typesText(s.mode);
+  // While text is being typed, a TODO that waits for Esc stops holding for a moment. Keep what made it hold
+  // as long as the text still holds, so a fix undone and typed again is judged by the command that redid it.
+  const settled = typesText(s.mode) ? { ...s, mode: 'normal' } : s;
   for (const todo of lesson.todos.slice(p.done)) {
-    if (p.holds.has(todo.id) && (typing || todo.done(s))) holds.set(todo.id, p.holds.get(todo.id)!);
+    if (p.holds.has(todo.id) && todo.done(settled)) holds.set(todo.id, p.holds.get(todo.id)!);
     else if (todo.done(s)) holds.set(todo.id, by);
   }
   // A hold kept while typing only counts once the condition is back.

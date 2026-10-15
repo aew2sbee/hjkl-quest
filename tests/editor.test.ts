@@ -615,6 +615,19 @@ describe('lesson 5-4 in Vim', () => {
     expect(editor.snapshot().lines).toEqual(lesson5_4.buffer);
   });
 
+  it('reads above the first line with :0r', () => {
+    const { editor, press } = open(lesson5_4, { read: () => ['one'] });
+    press(...run(':0r part.txt'));
+    expect(editor.snapshot().lines).toEqual(['one', ...lesson5_4.buffer]);
+  });
+
+  it('runs no command for :r !cmd in a read-only lesson', () => {
+    const sources: string[] = [];
+    const { press } = open(lesson5_3, { read: (source) => (sources.push(source), []) });
+    press(...run(':r !rm part.txt'));
+    expect(sources).toEqual([]);
+  });
+
   it('says when the file is not there', () => {
     const messages: string[] = [];
     const { editor, press } = open(lesson5_4, { onMessage: (t) => messages.push(t) });
@@ -745,11 +758,24 @@ describe('search options in the editor', () => {
     expect(shown()).toBe(true);
   });
 
-  it('starts over with every option off', () => {
+  it('starts over with every option off when Vim opens again, but keeps them for もう一度', () => {
     const { editor, press } = open(lesson6_5);
-    press(...run(':set ic hls'));
+    press(...run('/vim'), ...run(':set ic hls'));
     editor.reset();
+    expect(editor.snapshot().options).toMatchObject({ ignorecase: true, hlsearch: true });
+    // The last search is still there for n, and still ignores case: Vim on the first line comes first.
+    press('n');
+    expect(editor.snapshot().cursor).toEqual({ line: 0, ch: 24 });
+    editor.open(lesson6_5.fileName, lesson6_5.buffer);
     expect(editor.snapshot().options).toEqual({ ignorecase: false, hlsearch: false, incsearch: false });
+  });
+
+  it('still sets the options before an unknown one, and judges', () => {
+    const seen: boolean[] = [];
+    const { press } = open(lesson6_5, { onChange: (s) => seen.push(s.options.hlsearch) });
+    press(...run(':set hls nu'));
+    expect(seen.at(-1)).toBe(true);
+    expect(shown()).toBe(true);
   });
 });
 
@@ -845,6 +871,12 @@ describe('lesson 7-3 in Vim', () => {
     expect(prompt().value).toBe('edit');
     press(' ', 'Tab', 'Tab');
     expect(prompt().value).toBe('edit b.txt');
+  });
+
+  it('starts a new completion after Ctrl-D or a closed command line', () => {
+    const { press } = open(lesson7_3);
+    press(':', 'e', 'Tab', 'Escape', ':', ...typed('earlier'), 'Tab');
+    expect(prompt().value).toBe('earlier');
   });
 
   it('keeps Tab from leaving the command line', () => {

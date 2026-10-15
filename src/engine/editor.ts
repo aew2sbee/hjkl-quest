@@ -264,15 +264,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   // :r FILE and :r !cmd put the lines under the cursor's line (or the line given, :$r), and the cursor on the first.
   function read({ argString, line }: ExParams) {
+    // Checked first, so :r !cmd does not run a command (e.g. rm) for text that is never put in.
+    if (lesson.readOnly) return handlers.onMessage("E21: Cannot make changes, 'modifiable' is off");
     const source = argString?.trim() ?? '';
     const lines = handlers.read(source);
     if (!lines) return handlers.onMessage(`E484: Can't open file ${source}`);
-    if (lesson.readOnly) return handlers.onMessage("E21: Cannot make changes, 'modifiable' is off");
     if (!lines.length) return;
-    const after = view.state.doc.line((line ?? snapshot().cursor.line) + 1);
+    const under = line ?? snapshot().cursor.line;
+    // :0r puts the lines above the first line.
+    const at = under < 0 ? 0 : view.state.doc.line(under + 1).to;
+    const text = under < 0 ? lines.join('\n') + '\n' : '\n' + lines.join('\n');
     view.dispatch({
-      changes: { from: after.to, insert: '\n' + lines.join('\n') },
-      selection: { anchor: after.to + 1 },
+      changes: { from: at, insert: text },
+      selection: { anchor: under < 0 ? 0 : at + 1 },
       annotations: isolateHistory.of('full'),
       userEvent: 'input',
     });
@@ -280,10 +284,14 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   // :set ic, :set hls is, :set noic. Only the search options are known here.
   function set(args: string[]) {
+    // Like Vim, the options before an unknown one are still set.
     for (const arg of args) {
       const [, no, name] = /^(no)?(\w+)$/.exec(arg) ?? [];
       const option = Object.entries(searchOptions).find(([long, short]) => name === long || name === short)?.[0];
-      if (!option) return handlers.onMessage(`E518: Unknown option: ${arg}`);
+      if (!option) {
+        handlers.onMessage(`E518: Unknown option: ${arg}`);
+        break;
+      }
       Vim.setOption(option, !no);
     }
     // The last search follows 'ignorecase' too, so n after :set ic finds VIM as well as vim.
@@ -321,6 +329,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   function complete(input: HTMLInputElement, key: string) {
     const line = input.value;
     if (key === 'Ctrl-d') {
+      tabbing = null;
       handlers.onMessage(completions(line, handlers.fileNames()).matches.join('  '));
       handlers.onCompleted(`<C-D>:${line}`);
       return;
@@ -353,6 +362,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
       // Like a normal-mode command, it is logged before it changes anything.
       if (e.key === 'Enter' && promptKey === ':') commands.push(`:${e.target.value}`);
+      // A completion cycle ends with the line it was in.
+      if (e.key === 'Enter' || e.key === 'Escape') tabbing = null;
       if ((e.key === 'Enter' || e.key === 'Escape') && promptKey !== ':') {
         // An empty search repeats the last one, which was already adjusted.
         if (e.key === 'Enter' && e.target.value) {
@@ -376,14 +387,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   };
 
   // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
+  // A new Vim: options are global in codemirror-vim, so they go back to Vim's defaults, and no search is left.
+  // Not on reset (もう一度), which only goes back in the same Vim, settings and last search kept.
+  const startVim = () => {
+    lastSearch = '';
+    for (const name of Object.keys(searchOptions)) Vim.setOption(name, false);
+  };
+
   const listen = () => {
     mode = 'normal';
     forgetCommands();
     promptKey = '';
-    lastSearch = '';
     searching = false;
-    // Options are global in codemirror-vim, so each start goes back to Vim's defaults.
-    for (const name of Object.keys(searchOptions)) Vim.setOption(name, false);
+    tabbing = null;
     showMatches();
     const cm = getCM(view);
     if (!cm) return;
@@ -400,6 +416,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       handlers.onChange(snapshot());
     });
   };
+  startVim();
   listen();
 
   function snapshot(): EditorSnapshot {
@@ -432,6 +449,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       fileName = name;
       // The lesson's file opens where the lesson starts; other files at the top.
       view.setState(makeState(lines, name === lesson.fileName ? lesson.start : { line: 0, ch: 0 }));
+      startVim();
       listen();
     },
     edit(name, lines) {

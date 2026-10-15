@@ -373,6 +373,14 @@ describe('step while typing', () => {
     expect(p).toMatchObject({ done: 2, wrong: undefined });
   });
 
+  it('judges a fix undone and typed again by the command that redid it', () => {
+    let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['x']));
+    expect(p.wrong?.id).toBe('second');
+    p = step(lesson2, p, snap(['', ''], 'insert', ['x', 'o']));
+    p = step(lesson2, p, snap(['', 'b'], 'normal', ['x', 'o']));
+    expect(p.wrong).toBeUndefined();
+  });
+
   it('does not count a kept hold until its condition is back', () => {
     let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['o']));
     p = step(lesson2, p, snap(['a', ''], 'insert', ['o', 'i']));
