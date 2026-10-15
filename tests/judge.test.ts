@@ -12,10 +12,11 @@ import lesson2_1 from '../src/lessons/2-1';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {} });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, anchor: cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {} });
 const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   lines: lesson1_2.buffer,
   cursor: { line: 0, ch: 0 },
+  anchor: { line: 0, ch: 0 },
   mode: 'normal',
   screen,
   ran,
@@ -128,6 +129,7 @@ describe('lesson 1-3', () => {
   const line = (text: string): Snapshot => ({
     lines: [text],
     cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
     mode: 'normal',
     screen: 'vim',
     ran: ['vim'],
@@ -162,6 +164,7 @@ describe('lesson 1-4', () => {
   const line = (text: string, mode = 'normal'): Snapshot => ({
     lines: [text],
     cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
     mode,
     screen: 'vim',
     ran: ['vim'],
@@ -191,6 +194,7 @@ describe('lesson 1-5', () => {
   const lines = (first: string, second: string, mode = 'normal'): Snapshot => ({
     lines: [first, second],
     cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
     mode,
     screen: 'vim',
     ran: ['vim'],
@@ -230,6 +234,7 @@ describe('lesson 1-6', () => {
   const state = (screen: Snapshot['screen'], ran: string[], text = lesson1_6.buffer[0]): Snapshot => ({
     lines: [text],
     cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
     mode: 'normal',
     screen,
     ran,
@@ -270,6 +275,7 @@ describe('lesson 2-1', () => {
   const line = (text: string, commands: string[]): Snapshot => ({
     lines: [text],
     cursor: { line: 0, ch: 0 },
+    anchor: { line: 0, ch: 0 },
     mode: 'normal',
     screen: 'vim',
     ran: ['vim'],
@@ -385,10 +391,11 @@ describe('nextLesson', () => {
     expect(nextLesson('4-3')).toEqual({ id: '4-4', title: ':s で置換', ready: true });
     expect(nextLesson('4-4')).toEqual({ id: '5-1', title: ':! で外部コマンド', ready: true });
     expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: true });
+    expect(nextLesson('5-2')).toEqual({ id: '5-3', title: '選んだ行だけ保存', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('5-2')).toEqual({ id: '5-3', title: '選んだ行だけ保存', ready: false });
+    expect(nextLesson('5-3')).toEqual({ id: '5-4', title: ':r でファイルを読み込む', ready: false });
   });
 
   it('is undefined after the last lesson', () => {

@@ -13,6 +13,8 @@ export interface Span extends Pos {
 export interface EditorSnapshot {
   lines: string[];
   cursor: Pos;
+  /** Where the selection started in visual mode. The cursor otherwise. */
+  anchor: Pos;
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
   /**

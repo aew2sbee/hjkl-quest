@@ -21,6 +21,7 @@ import lesson4_3 from '../src/lessons/4-3';
 import lesson4_4 from '../src/lessons/4-4';
 import lesson5_1 from '../src/lessons/5-1';
 import lesson5_2 from '../src/lessons/5-2';
+import lesson5_3 from '../src/lessons/5-3';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -340,7 +341,7 @@ describe('lesson 3-1 in Vim', () => {
   it('asks for p when the order is made some other way', () => {
     const [b, a, d, c] = lesson3_1.buffer;
     // E.g. b) typed again by hand under a) with A, after deleting it with dd.
-    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {} };
+    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, anchor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {} };
     expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
   });
 });
@@ -354,7 +355,7 @@ describe('lesson 3-2 in Vim', () => {
 
   it('asks for r when the letter is fixed with x and i', () => {
     const lines = ['---> The cat sat on tha mat und slept.'];
-    const s = { lines, cursor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {} };
+    const s = { lines, cursor: { line: 0, ch: 7 }, anchor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {} };
     expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
   });
 });
@@ -541,5 +542,28 @@ describe('lesson 5-2 in Vim', () => {
   it('needs the backup to be there when listing', () => {
     expect(play(lesson5_2, run(':!ls')).done).toBe(0);
     expect(play(lesson5_2, [...run(':w backup.txt'), ...run(':!rm backup.txt'), ...run(':!ls')]).done).toBe(1);
+  });
+});
+
+describe('lesson 5-3 in Vim', () => {
+  it('knows where the selection started', () => {
+    const { editor, press } = open(lesson5_3);
+    press('j', 'l', 'v', 'j', 'j');
+    expect(editor.snapshot()).toMatchObject({ mode: 'visual', anchor: { line: 1, ch: 1 }, cursor: { line: 3 } });
+    press('Escape');
+    expect(editor.snapshot().anchor).toEqual(editor.snapshot().cursor);
+  });
+
+  it("clears in optimalKeys with j v j j, :'<,'>w part.txt", () => {
+    const seq = [...keys('j v j j'), ...typed(':w part.txt'), 'Enter'];
+    const p = play(lesson5_3, seq);
+    expect(p).toMatchObject({ done: 2, wrong: undefined });
+    expect(p.files['part.txt']).toEqual(lesson5_3.buffer.slice(1, 4));
+    expect(4 + seq.length).toBe(lesson5_3.optimalKeys);
+  });
+
+  it('asks for the selection when the lines are written by number', () => {
+    const p = play(lesson5_3, [...keys('j v j j Escape'), ...typed(':2,4w part.txt'), 'Enter']);
+    expect(p).toMatchObject({ done: 1, wrong: { id: 'write' } });
   });
 });
