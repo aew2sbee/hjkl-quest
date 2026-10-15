@@ -172,8 +172,7 @@ const next = nextLesson(lesson.id);
 
   // :!cmd runs in the directory that holds the lesson file (as it is on disk) and the lesson's other files.
   function onShell(command: string) {
-    setCmdline(runShell(command, { ...lesson.files, [lesson.fileName]: lesson.buffer }).join('
-'));
+    setCmdline(runShell(command, { ...lesson.files, [lesson.fileName]: lesson.buffer }).join('\n'));
     // Running it changes nothing the editor watches, so judge here: the TODO may be to run it.
     judge();
   }
