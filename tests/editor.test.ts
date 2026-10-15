@@ -13,6 +13,7 @@ import lesson2_6 from '../src/lessons/2-6';
 import lesson2_7 from '../src/lessons/2-7';
 import lesson3_1 from '../src/lessons/3-1';
 import lesson3_2 from '../src/lessons/3-2';
+import lesson3_3 from '../src/lessons/3-3';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -37,13 +38,20 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onWriteQuit() {},
     ...handlers,
   });
+  const view = EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!;
   // Vim moves j and k by screen lines, which jsdom cannot measure; move by text lines instead.
-  const cm = getCM(EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!)!;
+  const cm = getCM(view)!;
   cm.findPosV = (pos: Pos, amount: number) => ({ line: pos.line + amount, ch: pos.ch });
   const content = parent.querySelector<HTMLElement>('.cm-content')!;
   const press = (...keys: string[]) => {
     for (const key of keys) {
-      content.dispatchEvent(new KeyboardEvent('keydown', { ...keyEvent(key), bubbles: true, cancelable: true }));
+      const typing = editor.snapshot().mode === 'insert';
+      const e = new KeyboardEvent('keydown', { ...keyEvent(key), bubbles: true, cancelable: true });
+      content.dispatchEvent(e);
+      // jsdom does not type characters from keydown. In insert mode the browser would, unless the key was stopped.
+      if (typing && key.length === 1 && !e.defaultPrevented) {
+        view.dispatch(view.state.replaceSelection(key), { userEvent: 'input.type' });
+      }
     }
   };
   return { editor, press };
@@ -72,6 +80,9 @@ function play(lesson: Lesson, keys: string[]): Progress {
 /** "w w dw" → ["w", "w", "d", "w"]. Keys are single characters, or Escape / Ctrl-x. */
 const keys = (seq: string) =>
   seq.split(' ').flatMap((k) => (k.length > 1 && !k.startsWith('Ctrl-') && k !== 'Escape' ? [...k] : [k]));
+
+/** Text typed in insert mode, spaces included: one key per character. */
+const typed = (text: string) => [...text];
 
 describe('lesson editor', () => {
   it('records each normal-mode command once it is complete', () => {
@@ -262,11 +273,7 @@ describe('undo in the editor', () => {
 
   it('undoes text typed in one visit to insert mode in one step', () => {
     const { editor, press } = open(lesson2_7);
-    // jsdom does not type characters from keydown, so insert them the way typing would.
-    press('i');
-    const view = EditorView.findFromDOM(document.querySelector<HTMLElement>('.cm-editor')!)!;
-    for (const ch of 'ab') view.dispatch(view.state.replaceSelection(ch), { userEvent: 'input.type' });
-    press('Escape', 'u');
+    press('i', 'a', 'b', 'Escape', 'u');
     expect(editor.snapshot().lines[0]).toBe(start);
   });
 });
@@ -315,5 +322,22 @@ describe('lesson 3-2 in Vim', () => {
     const lines = ['---> The cat sat on tha mat und slept.'];
     const s = { lines, cursor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'] };
     expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
+  });
+});
+
+describe('lesson 3-3 in Vim', () => {
+  it('clears in optimalKeys with 3w ce toy, 4w l ce ike', () => {
+    const seq = [...keys('3w ce'), ...typed('toy'), 'Escape', ...keys('4w l ce'), ...typed('ike'), 'Escape'];
+    expect(play(lesson3_3, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson3_3.optimalKeys);
+  });
+
+  it('is not done until Esc', () => {
+    expect(play(lesson3_3, [...keys('3w ce'), ...typed('toy')]).done).toBe(0);
+  });
+
+  it('asks for ce when the word is deleted with de and typed with i', () => {
+    const p = play(lesson3_3, [...keys('3w de i'), ...typed('toy'), 'Escape']);
+    expect(p.wrong?.id).toBe('change-toy');
   });
 });
