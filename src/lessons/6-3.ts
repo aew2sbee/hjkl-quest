@@ -23,7 +23,7 @@ export default defineLesson({
   todos: [
     {
       id: 'fix-room',
-      mark: 'xx',
+      mark: 'xxx',
       text: '<code>xxx</code> を <code>R</code> で <code>304</code> にする',
       hint: '<code>xxx</code> の先頭で <code>R</code> を押し、<code>304</code> と打って <code>Esc</code> を押そう。',
       praise: ['304 号室、見つけた！', 'R で上書きできた！'],
