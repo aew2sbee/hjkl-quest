@@ -16,7 +16,8 @@ export interface EditorSnapshot {
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
   /**
-   * Normal-mode commands run since Vim opened, in order, e.g. ["w", "dw", "i"].
+   * Commands run since Vim opened, in order, e.g. ["w", "dw", "i", ":s/a/b/g"]. Normal-mode commands
+   * by their keys, searches by the key that opened them ("/"), and Ex commands as typed after ":".
    * Vim counts a command as run before it moves the cursor or changes the text,
    * so during that change the command is already last.
    */
@@ -41,10 +42,11 @@ export interface Todo {
   praise: string[];
   done: (s: Snapshot) => boolean;
   /**
-   * Commands that may make `done` come true, e.g. ["dw"]. When another command does it,
-   * the learner is asked to try again with the first of these. Any command when unset.
+   * Commands that may make `done` come true, e.g. ["dw"], or patterns for them, e.g. /^:s\// for any
+   * substitute. When another command does it, the learner is asked to try again with the first of these,
+   * so the first is a command. Any command when unset.
    */
-  require?: string[];
+  require?: [string, ...(string | RegExp)[]];
   /** Highlighted in the editor while this TODO is the current one. */
   target?: Pos;
   /**

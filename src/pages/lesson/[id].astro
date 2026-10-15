@@ -244,8 +244,8 @@ const next = nextLesson(lesson.id);
     stuckNoticed = false;
   }
 
-  // "dw" → ["d", "w"], "Ctrl-r" → ["Ctrl-r"]: one cap per key pressed.
-  const keyCaps = (command: string) => command.match(/Ctrl-.|./g) ?? [];
+  // "dw" → ["d", "w"], "Ctrl-r" → ["Ctrl-r"]: one cap per key pressed. An Ex command (":s/a/b") is one cap.
+  const keyCaps = (command: string) => (command.startsWith(':') ? [command] : (command.match(/Ctrl-.|./g) ?? []));
 
   // Shown while a TODO was done with a command other than the one the lesson teaches.
   let shownWrong: string | undefined;

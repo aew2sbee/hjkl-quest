@@ -432,17 +432,23 @@ vimtutor では説明だけで練習がない。`dw` と `de` の違いが分か
 ### 4.4 置換 — `:s` `:s///g` `:%s`
 
 ```
----> I recieve mail and recieve calls.
----> Did you recieve it?
----> We all recieve gifts.
+---> I recieve mail, recieve calls and recieve gifts.
+---> Did you recieve my letter? I did not recieve yours.
+---> We all recieve a prize if we recieve the most votes.
 目標  recieve がすべて receive になる
 ```
 
 | # | TODO | 判定 | 必須 |
 |---|---|---|---|
-| 1 | 1 行目の最初の 1 つだけを直す | 文 | `:s/recieve/receive` |
+| 1 | 1 行目の最初の 1 つだけを直す | 文 | `:s/…/…`（`/g` なし） |
 | 2 | 1 行目の残りを直す | 文 | `:s/…/…/g` |
 | 3 | 残りの行を 1 回で全部直す | 文 | `:%s/…/…/g` |
+
+- 最初の案は 1 行目に `recieve` が 2 つで、残りが 1 つになると `/g` を付けなくても直ってしまう。そのため 1 行目に 3 つ置き、残りの行にも 2 つずつ置いた。
+- シェル画面から始める。使えるキーは 4.3 と同じ。`:` の入力欄にはどの文字でも打てる。
+- 判定は文と、最後のコマンドの形（`:s` か `:%s` か、`/g` があるか）。置き換える言葉は見ない（`:s/ie/ei` でも直る）。最初から `/g` を付けて 1 行目を全部直したときや、`x` と `i` で直したときは、TODO のコマンドで挑戦するよう伝える。2・3 行目を `:s///g` で1行ずつ直したときは、`:%s` で挑戦するよう伝える。
+- 今の TODO で直す `recieve`（ファイルの中で最初に残っているもの）を黄色く光らせる。
+- 最短は 32 キー（`vim` Enter の4キー＋`:s/ie/ei` Enter＋`:s//ei/g` Enter＋`:%s//ei/g` Enter）。置き換える言葉を空にすると、前の置換と同じ言葉を使う。
 
 ---
 

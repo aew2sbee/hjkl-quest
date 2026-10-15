@@ -83,6 +83,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let lineBefore: { line: number; text: string } | null = null;
   // Set by u and Ctrl-R: the next edit starts a new run of edits, even on the same line.
   let lineStale = false;
+  // The key that opened the prompt under the editor: ":" for an Ex command, "/" or "?" for a search.
+  let promptKey = '';
 
   // Runs before the Vim plugin. Returning true stops the key there (and prevents the browser default).
   const guard = Prec.highest(
@@ -90,11 +92,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       keydown(e) {
         if (e.isComposing) return false;
         // r takes the next character as text, e.g. "a" in "ra" even before a is taught.
-        const verdict = classifyKey(lesson, e, mode, mode === 'normal' && /^\d*r$/.test(typing.join('')));
+        const awaitingChar = mode === 'normal' && /^\d*r$/.test(typing.join(''));
+        const verdict = classifyKey(lesson, e, mode, awaitingChar);
         if (verdict === 'ignore') return false;
         const name = keyName(e);
         handlers.onKey(name, verdict);
         if (verdict !== 'pass') return true;
+        if ((mode === 'normal' || mode === 'visual') && !awaitingChar && [':', '/', '?'].includes(e.key)) promptKey = e.key;
         // Esc cancels a half-typed command, and ":" opens the Ex command line, which is tracked on its own.
         if (mode !== 'normal' || e.key === 'Escape' || e.key === ':') typing = [];
         else typing.push(name);
@@ -178,13 +182,16 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   const view = new EditorView({ state: makeState(), parent });
 
-  // Keys typed in the Ex command line (after ":") go to an <input>, not to the guard above. Log them too.
+  // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
   // Capture phase, because Vim stops Enter on the input before it would bubble up here.
   view.dom.addEventListener(
     'keydown',
     (e) => {
-      const logged = e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key);
-      if (e.target instanceof HTMLInputElement && logged && !e.isComposing) handlers.onKey(keyName(e), 'pass');
+      if (!(e.target instanceof HTMLInputElement) || e.isComposing) return;
+      if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(keyName(e), 'pass');
+      // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
+      // Like a normal-mode command, it is logged before it changes anything.
+      if (e.key === 'Enter' && promptKey === ':') commands.push(`:${e.target.value}`);
     },
     true,
   );
@@ -197,6 +204,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     newUndoStep = false;
     lineBefore = null;
     lineStale = false;
+    promptKey = '';
     const cm = getCM(view);
     if (!cm) return;
     routes.set(cm, { handlers, undoLine, fileInfo });

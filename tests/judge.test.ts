@@ -375,10 +375,7 @@ describe('nextLesson', () => {
     expect(nextLesson('3-4')).toEqual({ id: '4-1', title: '位置とファイルの情報', ready: true });
     expect(nextLesson('4-1')).toEqual({ id: '4-2', title: '/ で検索', ready: true });
     expect(nextLesson('4-2')).toEqual({ id: '4-3', title: '% で対応する括弧へ', ready: true });
-  });
-
-  it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('4-3')).toEqual({ id: '4-4', title: ':s で置換', ready: false });
+    expect(nextLesson('4-3')).toEqual({ id: '4-4', title: ':s で置換', ready: true });
   });
 
   it('is undefined after the last lesson', () => {
