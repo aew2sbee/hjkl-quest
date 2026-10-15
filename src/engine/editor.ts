@@ -248,10 +248,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   listen();
 
   function snapshot(): EditorSnapshot {
-    const cursor = getCM(view)?.getCursor() ?? { line: 0, ch: 0 };
+    const cm = getCM(view);
+    const cursor = cm?.getCursor() ?? { line: 0, ch: 0 };
+    const anchor = mode === 'visual' && cm ? cm.getCursor('anchor') : cursor;
     return {
       lines: view.state.doc.toString().split('\n'),
       cursor: { line: cursor.line, ch: cursor.ch },
+      anchor: { line: anchor.line, ch: anchor.ch },
       mode,
       commands: [...commands],
     };
