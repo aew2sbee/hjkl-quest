@@ -18,6 +18,7 @@ import lesson3_4 from '../src/lessons/3-4';
 import lesson4_1 from '../src/lessons/4-1';
 import lesson4_2 from '../src/lessons/4-2';
 import lesson4_3 from '../src/lessons/4-3';
+import lesson4_4 from '../src/lessons/4-4';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -449,5 +450,37 @@ describe('lesson 4-3 in Vim', () => {
 
   it('asks for % when the bracket is reached with h', () => {
     expect(play(lesson4_3, keys('$ 8h')).wrong?.id).toBe('match-paren');
+  });
+});
+
+describe('lesson 4-4 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('logs an Ex command as typed, before it changes the text', () => {
+    const seen: string[][] = [];
+    const { editor, press } = open(lesson4_4, { onChange: (s) => seen.push(s.commands) });
+    press(...run(':s/recieve/receive'));
+    expect(editor.snapshot().lines[0]).toBe('---> I receive mail, recieve calls and recieve gifts.');
+    expect(seen.at(-1)).toEqual([':s/recieve/receive']);
+  });
+
+  it('clears in optimalKeys with :s/ie/ei, :s//ei/g, :%s//ei/g', () => {
+    const seq = [...run(':s/ie/ei'), ...run(':s//ei/g'), ...run(':%s//ei/g')];
+    expect(play(lesson4_4, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson4_4.optimalKeys);
+  });
+
+  it('clears with the commands as the TODOs write them', () => {
+    const seq = [...run(':s/recieve/receive'), ...run(':s/recieve/receive/g'), ...run(':%s/recieve/receive/g')];
+    expect(play(lesson4_4, seq)).toMatchObject({ done: 3, wrong: undefined });
+  });
+
+  it('asks for the first one alone when the whole line is done at once', () => {
+    expect(play(lesson4_4, run(':s/recieve/receive/g')).wrong?.id).toBe('first');
+  });
+
+  it('asks for /g on every line when the other lines are fixed one at a time', () => {
+    const seq = [...run(':s/recieve/receive'), ...run(':s/recieve/receive/g'), 'j', ...run(':s/recieve/receive/g'), 'j', ...run(':s/recieve/receive/g')];
+    expect(play(lesson4_4, seq)).toMatchObject({ done: 2, wrong: { id: 'file' } });
   });
 });

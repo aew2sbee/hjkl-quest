@@ -63,7 +63,8 @@ export interface Progress {
 
 export const startProgress = (done = 0): Progress => ({ done, holds: new Map() });
 
-const allowed = (todo: Todo, by: string | null) => !todo.require || by === null || todo.require.includes(by);
+const allowed = (todo: Todo, by: string | null) =>
+  !todo.require || by === null || todo.require.some((r) => (typeof r === 'string' ? r === by : r.test(by)));
 
 /**
  * Judges the TODOs against a new snapshot. TODOs are done in order: only the current one can
