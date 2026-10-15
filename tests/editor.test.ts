@@ -29,6 +29,7 @@ import lesson6_3 from '../src/lessons/6-3';
 import lesson6_4 from '../src/lessons/6-4';
 import lesson6_5 from '../src/lessons/6-5';
 import lesson7_1 from '../src/lessons/7-1';
+import lesson7_2 from '../src/lessons/7-2';
 import { runShell, type Files } from '../src/engine/files';
 import { helpPage } from '../src/engine/help';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
@@ -64,6 +65,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onMessage() {},
     onShell() {},
     onHelp() {},
+    onEdit() {},
     read: () => undefined,
     ...handlers,
   });
@@ -108,7 +110,7 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
     onKey: (_name, v) => (verdict = v),
     onChange: judge,
     onWrite(file, lines) {
-      files = { ...files, [file ?? lesson.fileName]: lines };
+      files = { ...files, [file ?? editor.snapshot().file]: lines };
       judge(editor.snapshot());
     },
     onShell(command) {
@@ -122,6 +124,11 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
     },
     onQuit() {
       help = undefined;
+      judge(editor.snapshot());
+    },
+    onEdit(arg) {
+      const name = arg.trim();
+      editor.edit(name, files[name] ?? ['']);
       judge(editor.snapshot());
     },
   });
@@ -361,7 +368,7 @@ describe('lesson 3-1 in Vim', () => {
   it('asks for p when the order is made some other way', () => {
     const [b, a, d, c] = lesson3_1.buffer;
     // E.g. b) typed again by hand under a) with A, after deleting it with dd.
-    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, anchor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } };
+    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, anchor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false }, file: 'lesson.txt' };
     expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
   });
 });
@@ -375,7 +382,7 @@ describe('lesson 3-2 in Vim', () => {
 
   it('asks for r when the letter is fixed with x and i', () => {
     const lines = ['---> The cat sat on tha mat und slept.'];
-    const s = { lines, cursor: { line: 0, ch: 7 }, anchor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } };
+    const s = { lines, cursor: { line: 0, ch: 7 }, anchor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false }, file: 'lesson.txt' };
     expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
   });
 });
@@ -774,5 +781,44 @@ describe('lesson 7-1 in Vim', () => {
 
   it('does not count closing before the w page was open', () => {
     expect(play(lesson7_1, [...run(':help'), ...run(':q')]).done).toBe(1);
+  });
+});
+
+describe('lesson 7-2 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('opens another file at the top, and the lesson file where the lesson starts', () => {
+    const { editor } = open(lesson4_1);
+    editor.open('other.txt', ['one', 'two']);
+    expect(editor.snapshot()).toMatchObject({ file: 'other.txt', lines: ['one', 'two'], cursor: { line: 0, ch: 0 } });
+    editor.open('lesson4-1.txt', lesson4_1.buffer);
+    expect(editor.snapshot()).toMatchObject({ file: 'lesson4-1.txt', cursor: { line: 14, ch: 0 } });
+  });
+
+  it('switches files for :e with a fresh undo history', () => {
+    const { editor, press } = open(lesson7_2, { onEdit: () => editor.edit('~/.vimrc', ['" My Vim settings']) });
+    press('x', ...run(':e ~/.vimrc'));
+    expect(editor.snapshot()).toMatchObject({ file: '~/.vimrc', lines: ['" My Vim settings'], commands: [] });
+    press('u');
+    expect(editor.snapshot().lines).toEqual(['" My Vim settings']);
+  });
+
+  it('runs :e with the file name', () => {
+    const args: string[] = [];
+    const { press } = open(lesson7_2, { onEdit: (arg) => args.push(arg) });
+    press(...run(':e ~/.vimrc'));
+    expect(args.map((a) => a.trim())).toEqual(['~/.vimrc']);
+  });
+
+  it('clears in optimalKeys with :e ~/.vimrc, o set number, :w', () => {
+    const seq = [...run(':e ~/.vimrc'), 'o', ...typed('set number'), 'Escape', ...run(':w')];
+    const p = play(lesson7_2, seq);
+    expect(p).toMatchObject({ done: 3, wrong: undefined });
+    expect(p.files['~/.vimrc']).toEqual(['" My Vim settings', 'set number']);
+    expect(4 + seq.length).toBe(lesson7_2.optimalKeys);
+  });
+
+  it('does not count the line written in the lesson file', () => {
+    expect(play(lesson7_2, ['o', ...typed('set number'), 'Escape', ...run(':w')]).done).toBe(0);
   });
 });

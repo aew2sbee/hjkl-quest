@@ -23,7 +23,7 @@ const next = nextLesson(lesson.id);
       <section aria-label="エディタ">
         <div class="vimwin" data-screen={lesson.shell ? 'shell' : 'vim'}>
           <div class="titlebar" aria-hidden="true">
-            <i></i><i></i><i></i><span class="title-vim">{lesson.fileName} — VIM</span><span class="title-shell"
+            <i></i><i></i><i></i><span class="title-vim" id="title-file">{lesson.fileName} — VIM</span><span class="title-shell"
               >~/quest — zsh</span
             >
           </div>
@@ -35,7 +35,7 @@ const next = nextLesson(lesson.id);
           <div id="editor"></div>
           <div class="status">
             <span class="mode" id="mode">NORMAL</span>
-            <span class="file">{lesson.fileName}</span>
+            <span class="file" id="file-name">{lesson.fileName}</span>
             <span class="pos" id="pos">{lesson.start.line + 1},{lesson.start.ch + 1}</span>
           </div>
           <div class="cmdline" id="cmdline" aria-live="polite"></div>
@@ -118,6 +118,7 @@ const next = nextLesson(lesson.id);
     onMessage: (text) => setCmdline(text),
     onShell,
     onHelp,
+    onEdit,
     read,
   });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
@@ -137,7 +138,8 @@ const next = nextLesson(lesson.id);
     const cmd = parseShellCommand(input, lesson.fileName, lesson.saves);
     if (cmd.kind === 'vim') {
       ran = [...ran, 'vim'];
-      resetEditor(files[lesson.fileName]);
+      showHelp(undefined);
+      openFile(lesson.fileName);
       setCmdline('');
       show('vim');
       judge();
@@ -178,17 +180,19 @@ const next = nextLesson(lesson.id);
     setCmdline(`保存は${savesId ? ` ${savesId} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
   }
 
+  // How Vim gives a file's size, e.g. 1L, 30B.
+  const size = (lines: string[]) => `${lines.length}L, ${new TextEncoder().encode(lines.join('\n') + '\n').length}B`;
+
   // Puts `lines` in the file and says so the way Vim does, e.g. "backup.txt" [New] 1L, 30B written.
   function writeFile(name: string, lines: string[]): string {
     const isNew = !(name in files);
     files = { ...files, [name]: lines };
-    const bytes = new TextEncoder().encode(lines.join('\n') + '\n').length;
-    return `"${name}"${isNew ? ' [New]' : ''} ${lines.length}L, ${bytes}B written`;
+    return `"${name}"${isNew ? ' [New]' : ''} ${size(lines)} written`;
   }
 
   function onWrite(file: string | undefined, lines: string[]) {
     if (!writes) return notYetWriting();
-    setCmdline(writeFile(file ?? lesson.fileName, lines));
+    setCmdline(writeFile(file ?? editor.snapshot().file, lines));
     // Writing changes nothing the editor watches, so judge here: the TODO may be to write.
     judge();
   }
@@ -197,9 +201,25 @@ const next = nextLesson(lesson.id);
     if (!lesson.shell) return;
     if (!writes) return notYetWriting();
     // Vim reports the write as it quits.
-    shell.print(writeFile(lesson.fileName, editor.snapshot().lines));
+    const { file, lines } = editor.snapshot();
+    shell.print(writeFile(file, lines));
     ran = [...ran, ':wq'];
     show('shell');
+    judge();
+  }
+
+  // :e FILE opens another file, as long as the one open has no changes left unwritten (:e! drops them).
+  function onEdit(arg: string) {
+    const force = arg.trimStart().startsWith('!');
+    const name = arg.trim().replace(/^!\s*/, '');
+    if (!name) return;
+    const { file, lines } = editor.snapshot();
+    if (!force && lines.join('\n') !== (files[file] ?? ['']).join('\n')) {
+      return setCmdline('E37: No write since last change (add ! to override)', 'err');
+    }
+    editor.edit(name, files[name] ?? ['']);
+    showFile(name);
+    setCmdline(name in files ? `"${name}" ${size(files[name])}` : `"${name}" [New]`);
     judge();
   }
 
@@ -305,11 +325,18 @@ const next = nextLesson(lesson.id);
     editor.setTarget(span);
   }
 
-  function resetEditor(lines?: string[]) {
-    editor.reset(lines);
-    showHelp(undefined);
+  // Opens the file as it was last written, as Vim starts.
+  function openFile(name: string) {
+    editor.open(name, files[name]);
+    showFile(name);
+  }
+
+  // Names the file now open, and starts the current TODO over in it.
+  function showFile(name: string) {
+    $('file-name').textContent = name;
+    $('title-file').textContent = `${name} — VIM`;
     progress = startProgress(progress.done);
-    checkpoint = { lines, progress };
+    checkpoint = { lines: editor.snapshot().lines, progress };
     shownHighlight = '';
     stuckNoticed = false;
   }
@@ -383,7 +410,8 @@ const next = nextLesson(lesson.id);
     keyCount = 0;
     ran = [];
     files = startFiles();
-    resetEditor();
+    showHelp(undefined);
+    openFile(lesson.fileName);
     shell.reset();
     renderTodos();
     $('keylog').querySelectorAll('kbd').forEach((k) => k.remove());

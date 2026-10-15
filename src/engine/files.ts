@@ -8,7 +8,9 @@ export type Files = Record<string, string[]>;
 export function runShell(input: string, files: Files): { lines: string[]; files: Files } {
   const [name, ...args] = input.trim().split(/\s+/).filter(Boolean);
   if (!name) return { lines: [], files };
-  if (name === 'ls') return { lines: [Object.keys(files).sort().join('  ')], files };
+  // Files elsewhere, like ~/.vimrc, are not in this directory.
+  const here = Object.keys(files).filter((file) => !file.includes('/'));
+  if (name === 'ls') return { lines: [here.sort().join('  ')], files };
   if (name === 'cat') {
     return { lines: args.flatMap((file) => files[file] ?? [`cat: ${file}: No such file or directory`]), files };
   }
