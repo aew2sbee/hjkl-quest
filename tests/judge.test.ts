@@ -83,6 +83,13 @@ describe('classifyKey', () => {
     expect(classifyKey(lesson, key('d', { ctrlKey: true }))).toBe('unlearned');
   });
 
+  it('passes the character after r, even one not taught yet', () => {
+    const lesson3_2 = { ...lesson, keys: ['r'] };
+    expect(classifyKey(lesson3_2, key('a'), 'normal', true)).toBe('pass');
+    expect(classifyKey(lesson3_2, key('a'), 'normal')).toBe('unlearned');
+    expect(classifyKey(lesson3_2, key('Enter'), 'normal', true)).toBe('unlearned');
+  });
+
   it('types any character and Backspace in insert mode, but not Enter', () => {
     for (const k of ['w', 'G', '0', ' ', '.', 'Backspace']) {
       expect(classifyKey(lesson1_4, key(k), 'insert')).toBe('pass');
@@ -362,10 +369,11 @@ describe('nextLesson', () => {
     expect(nextLesson('2-5')).toEqual({ id: '2-6', title: 'dd で行を削除', ready: true });
     expect(nextLesson('2-6')).toEqual({ id: '2-7', title: '取り消しとやり直し', ready: true });
     expect(nextLesson('2-7')).toEqual({ id: '3-1', title: 'p で貼り付け', ready: true });
+    expect(nextLesson('3-1')).toEqual({ id: '3-2', title: 'r で1文字置き換え', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('3-1')).toEqual({ id: '3-2', title: 'r で1文字置き換え', ready: false });
+    expect(nextLesson('3-2')).toEqual({ id: '3-3', title: 'ce で単語を変更', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
