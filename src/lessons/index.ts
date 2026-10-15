@@ -28,11 +28,12 @@ import lesson6_2 from './6-2';
 import lesson6_3 from './6-3';
 import lesson6_4 from './6-4';
 import lesson6_5 from './6-5';
+import lesson7_1 from './7-1';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4, lesson5_1, lesson5_2, lesson5_3, lesson5_4, lesson6_1, lesson6_2, lesson6_3, lesson6_4, lesson6_5].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4, lesson5_1, lesson5_2, lesson5_3, lesson5_4, lesson6_1, lesson6_2, lesson6_3, lesson6_4, lesson6_5, lesson7_1].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {
@@ -110,7 +111,15 @@ export const chapters: ChapterOutline[] = [
       { id: '6-5', title: ':set で設定' },
     ],
   },
-  { no: 7, title: 'ヘルプと設定', lessons: [] },
+  {
+    no: 7,
+    title: 'ヘルプと設定',
+    lessons: [
+      { id: '7-1', title: ':help でヘルプ' },
+      { id: '7-2', title: 'vimrc で設定' },
+      { id: '7-3', title: 'Tab で補完' },
+    ],
+  },
 ];
 
 /** The lesson after `id` in the chapter list, built or not. Undefined after the last one. */

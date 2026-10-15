@@ -81,7 +81,7 @@ hjkl-quest/
 
 ## 6. 未決事項
 
-- `@replit/codemirror-vim` で再現できないコマンド（`:!cmd`、`:r`、`:help` など）をどう作るか → `Vim.defineEx` で自作し、ファイルはブラウザの中の仮想ファイルにする（[spec.md](spec.md) の「仮想ファイル」）。`:!cmd` は 5.1 で作った
+- `@replit/codemirror-vim` で再現できないコマンド（`:!cmd`、`:r`、`:help` など）をどう作るか → `Vim.defineEx` で自作し、ファイルはブラウザの中の仮想ファイルにする（[spec.md](spec.md) の「仮想ファイル」）。`:!cmd` は 5.1、`:help` は 7.1 で作った
 - ブラウザのショートカットと重なるキー（`Ctrl-R` `Ctrl-G` `Ctrl-O` `Ctrl-D`）をエディタで受け取れるか → M1 の最初に確かめる。`Ctrl-R` は 2.7、`Ctrl-G` は 4.1、`Ctrl-O` は 4.2 で使う。Vim がキーを処理してブラウザの既定の動き（再読み込み、ページ内検索、ファイルを開く）を止めることはテストで確かめたが、実際のブラウザではまだ確かめていない
 
 サービスの動きについての未決事項は [spec.md](spec.md)、レッスンについては [lessons.md](lessons.md) に書く。

@@ -28,6 +28,10 @@ const next = nextLesson(lesson.id);
             >
           </div>
           <div id="shell"></div>
+          <div class="helpwin" id="help" hidden>
+            <div class="helpbar" id="help-bar"></div>
+            <pre id="help-text"></pre>
+          </div>
           <div id="editor"></div>
           <div class="status">
             <span class="mode" id="mode">NORMAL</span>
@@ -61,6 +65,7 @@ const next = nextLesson(lesson.id);
   import { createLessonEditor } from '../../engine/editor';
   import { highlightFor, hjklFor, startProgress, step, type KeyVerdict, type Progress } from '../../engine/judge';
   import { runShell, type Files } from '../../engine/files';
+  import { helpPage } from '../../engine/help';
   import { createShell, parseShellCommand } from '../../engine/shell';
   import { lessons } from '../../lessons';
   import type { Pos, Snapshot } from '../../lessons/types';
@@ -95,6 +100,8 @@ const next = nextLesson(lesson.id);
   let files = startFiles();
   // Lessons that teach writing. Before them, :w and :wq leave the practice text as it is.
   const writes = lesson.saves || lesson.files !== undefined;
+  // The help topic open over the file, if any.
+  let help: string | undefined;
   // Tell the learner only once per attempt that the text can no longer reach the goal.
   let stuckNoticed = false;
   // The highlight last sent to the editor, so it is only redrawn when it moves.
@@ -110,6 +117,7 @@ const next = nextLesson(lesson.id);
     onWriteQuit,
     onMessage: (text) => setCmdline(text),
     onShell,
+    onHelp,
     read,
   });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
@@ -146,6 +154,12 @@ const next = nextLesson(lesson.id);
   }
 
   function onQuit(force: boolean) {
+    // With help open, :q closes the help, as in Vim.
+    if (help !== undefined) {
+      showHelp(undefined);
+      judge();
+      return;
+    }
     if (!lesson.shell) return;
     if (!force) {
       const msg = lesson.saves
@@ -197,6 +211,24 @@ const next = nextLesson(lesson.id);
     judge();
   }
 
+  function showHelp(topic: string | undefined) {
+    help = topic;
+    const page = topic === undefined ? undefined : helpPage(topic);
+    $('help').hidden = !page;
+    if (!page) return;
+    $('help-bar').textContent = `${page.file} [ヘルプ][読込専用]`;
+    $('help-text').textContent = page.lines.join('\n');
+    $('help-text').scrollTop = 0;
+  }
+
+  function onHelp(topic: string) {
+    const name = topic.trim() || 'help.txt';
+    if (!helpPage(name)) return setCmdline(`E149: Sorry, no help for ${name}`, 'err');
+    showHelp(name);
+    // Opening help changes nothing the editor watches, so judge here: the TODO may be to open it.
+    judge();
+  }
+
   // What :r puts in: a file, or what :r !cmd prints.
   function read(source: string): string[] | undefined {
     if (!source.startsWith('!')) return files[source];
@@ -219,7 +251,7 @@ const next = nextLesson(lesson.id);
   }
 
   function judge() {
-    const s: Snapshot = { ...editor.snapshot(), screen, ran, files };
+    const s: Snapshot = { ...editor.snapshot(), screen, ran, files, help };
     const stuck = lesson.stuck?.(s) ?? false;
     // Until the learner starts over, keep pointing at the button that fixes it.
     $('btn-reset').classList.toggle('attention', stuck);
@@ -275,6 +307,7 @@ const next = nextLesson(lesson.id);
 
   function resetEditor(lines?: string[]) {
     editor.reset(lines);
+    showHelp(undefined);
     progress = startProgress(progress.done);
     checkpoint = { lines, progress };
     shownHighlight = '';
@@ -423,7 +456,7 @@ const next = nextLesson(lesson.id);
   }
 
   /* One screen at a time: the shell prompt, or Vim with its status line. */
-  .vimwin[data-screen='shell'] :is(#editor, .status, .cmdline, .title-vim),
+  .vimwin[data-screen='shell'] :is(#editor, #help, .status, .cmdline, .title-vim),
   .vimwin[data-screen='vim'] :is(#shell, .title-shell) {
     display: none;
   }
@@ -469,6 +502,32 @@ const next = nextLesson(lesson.id);
     50% {
       opacity: 0;
     }
+  }
+
+  /* :help opens above the file, like a split window in Vim. Only the editor below takes keys. */
+  .helpwin {
+    border-bottom: 2px solid var(--line);
+  }
+  .helpwin[hidden] {
+    display: none;
+  }
+  .helpbar {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: #18201b;
+    color: var(--ed-fg);
+    padding: 4px 14px;
+  }
+  #help-text {
+    margin: 0;
+    padding: 8px 14px;
+    max-height: calc(14px * 1.6 * 8 + 16px);
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ed-fg);
+    white-space: pre-wrap;
   }
 
   /* CodeMirror builds its DOM at runtime, so these rules are global. */

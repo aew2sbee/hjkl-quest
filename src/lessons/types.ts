@@ -42,6 +42,8 @@ export interface Snapshot extends EditorSnapshot {
   ran: string[];
   /** The files in the directory Vim runs in, by name, as last written. */
   files: Record<string, string[]>;
+  /** The help topic open over the file ("help.txt" for the main page). Unset when no help is open. */
+  help?: string;
 }
 
 export interface Todo {
