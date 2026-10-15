@@ -19,11 +19,12 @@ import lesson4_1 from './4-1';
 import lesson4_2 from './4-2';
 import lesson4_3 from './4-3';
 import lesson4_4 from './4-4';
+import lesson5_1 from './5-1';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1, lesson4_2, lesson4_3, lesson4_4, lesson5_1].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {
@@ -80,7 +81,16 @@ export const chapters: ChapterOutline[] = [
       { id: '4-4', title: ':s で置換' },
     ],
   },
-  { no: 5, title: 'ファイル操作', lessons: [] },
+  {
+    no: 5,
+    title: 'ファイル操作',
+    lessons: [
+      { id: '5-1', title: ':! で外部コマンド' },
+      { id: '5-2', title: ':w で名前を付けて保存' },
+      { id: '5-3', title: '選んだ行だけ保存' },
+      { id: '5-4', title: ':r でファイルを読み込む' },
+    ],
+  },
   { no: 6, title: 'その他の編集', lessons: [] },
   { no: 7, title: 'ヘルプと設定', lessons: [] },
 ];

@@ -19,6 +19,7 @@ import lesson4_1 from '../src/lessons/4-1';
 import lesson4_2 from '../src/lessons/4-2';
 import lesson4_3 from '../src/lessons/4-3';
 import lesson4_4 from '../src/lessons/4-4';
+import lesson5_1 from '../src/lessons/5-1';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -49,6 +50,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onQuit() {},
     onWriteQuit() {},
     onMessage() {},
+    onShell() {},
     ...handlers,
   });
   const view = EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!;
@@ -482,5 +484,26 @@ describe('lesson 4-4 in Vim', () => {
   it('asks for /g on every line when the other lines are fixed one at a time', () => {
     const seq = [...run(':s/recieve/receive'), ...run(':s/recieve/receive/g'), 'j', ...run(':s/recieve/receive/g'), 'j', ...run(':s/recieve/receive/g')];
     expect(play(lesson4_4, seq)).toMatchObject({ done: 2, wrong: { id: 'file' } });
+  });
+});
+
+describe('lesson 5-1 in Vim', () => {
+  it('runs :!cmd with what follows the "!"', () => {
+    const shell: string[] = [];
+    const { press } = open(lesson5_1, { onShell: (cmd) => shell.push(cmd) });
+    press(...typed(':!cat todo.txt'), 'Enter');
+    expect(shell).toEqual(['cat todo.txt']);
+  });
+
+  it('clears in optimalKeys with :!ls and :!cat todo.txt', () => {
+    let progress = startProgress();
+    const seq = [...typed(':!ls'), 'Enter', ...typed(':!cat todo.txt'), 'Enter'];
+    // The lesson page judges once the command has run, since it changes nothing the editor watches.
+    const { editor, press } = open(lesson5_1, {
+      onShell: () => (progress = step(lesson5_1, progress, { ...editor.snapshot(), screen: 'vim', ran: ['vim'] })),
+    });
+    press(...seq);
+    expect(progress).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson5_1.optimalKeys);
   });
 });
