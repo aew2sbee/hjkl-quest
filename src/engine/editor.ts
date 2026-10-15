@@ -20,6 +20,8 @@ export interface EditorHandlers {
   onMessage(text: string): void;
   /** `:!cmd` was run, with what follows the "!". */
   onShell(command: string): void;
+  /** The lines `:r` puts in: a file's (`part.txt`), or a command's output (`!ls`). Undefined when there is no such file. */
+  read(source: string): string[] | undefined;
 }
 
 export interface LessonEditor {
@@ -65,6 +67,7 @@ interface Route {
   undoLine(): void;
   fileInfo(): void;
   write(params: ExParams): void;
+  read(params: ExParams): void;
 }
 const routes = new WeakMap<object, Route>();
 Vim.defineEx('quit', 'q', (cm: object, params: ExParams) => {
@@ -75,6 +78,9 @@ Vim.defineEx('wq', 'wq', (cm: object) => {
 });
 Vim.defineEx('write', 'w', (cm: object, params: ExParams) => {
   routes.get(cm)?.write(params);
+});
+Vim.defineEx('read', 'r', (cm: object, params: ExParams) => {
+  routes.get(cm)?.read(params);
 });
 Vim.defineEx('!', '!', (cm: object, params: ExParams) => {
   routes.get(cm)?.handlers.onShell(params.argString ?? '');
@@ -205,6 +211,22 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     handlers.onWrite(file || undefined, line === undefined ? lines : lines.slice(line, (lineEnd ?? line) + 1));
   }
 
+  // :r FILE and :r !cmd put the lines under the cursor's line (or the line given, :$r), and the cursor on the first.
+  function read({ argString, line }: ExParams) {
+    const source = argString?.trim() ?? '';
+    const lines = handlers.read(source);
+    if (!lines) return handlers.onMessage(`E484: Can't open file ${source}`);
+    if (lesson.readOnly) return handlers.onMessage("E21: Cannot make changes, 'modifiable' is off");
+    if (!lines.length) return;
+    const after = view.state.doc.line((line ?? snapshot().cursor.line) + 1);
+    view.dispatch({
+      changes: { from: after.to, insert: '\n' + lines.join('\n') },
+      selection: { anchor: after.to + 1 },
+      annotations: isolateHistory.of('full'),
+      userEvent: 'input',
+    });
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
@@ -232,7 +254,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     promptKey = '';
     const cm = getCM(view);
     if (!cm) return;
-    routes.set(cm, { handlers, undoLine, fileInfo, write });
+    routes.set(cm, { handlers, undoLine, fileInfo, write, read });
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
     // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
