@@ -60,7 +60,7 @@ const next = nextLesson(lesson.id);
 <script>
   import { createLessonEditor } from '../../engine/editor';
   import { highlightFor, hjklFor, startProgress, step, type KeyVerdict, type Progress } from '../../engine/judge';
-  import { runShell } from '../../engine/files';
+  import { runShell, type Files } from '../../engine/files';
   import { createShell, parseShellCommand } from '../../engine/shell';
   import { lessons } from '../../lessons';
   import type { Pos, Snapshot } from '../../lessons/types';
@@ -90,8 +90,11 @@ const next = nextLesson(lesson.id);
   // or an earlier TODO's start if a later fix was made the wrong way since then.
   let checkpoint: { lines?: string[]; cursor?: Pos; progress: Progress } = { progress };
   let keyCount = 0;
-  // What :wq last wrote. Opening the file again shows this instead of the lesson's text.
-  let saved: string[] | undefined;
+  // The directory Vim runs in. Writing the lesson file (:wq) changes what opening it shows.
+  const startFiles = (): Files => ({ ...lesson.files, [lesson.fileName]: lesson.buffer });
+  let files = startFiles();
+  // Lessons that teach writing. Before them, :w and :wq leave the practice text as it is.
+  const writes = lesson.saves || lesson.files !== undefined;
   // Tell the learner only once per attempt that the text can no longer reach the goal.
   let stuckNoticed = false;
   // The highlight last sent to the editor, so it is only redrawn when it moves.
@@ -103,6 +106,7 @@ const next = nextLesson(lesson.id);
     onKey,
     onChange: judge,
     onQuit,
+    onWrite,
     onWriteQuit,
     onMessage: (text) => setCmdline(text),
     onShell,
@@ -124,7 +128,7 @@ const next = nextLesson(lesson.id);
     const cmd = parseShellCommand(input, lesson.fileName, lesson.saves);
     if (cmd.kind === 'vim') {
       ran = [...ran, 'vim'];
-      resetEditor(saved);
+      resetEditor(files[lesson.fileName]);
       setCmdline('');
       show('vim');
       judge();
@@ -154,25 +158,40 @@ const next = nextLesson(lesson.id);
     judge();
   }
 
+  function notYetWriting() {
+    const savesId = Object.values(lessons).find((l) => l.saves)?.id.replace('-', '.');
+    setCmdline(`保存は${savesId ? ` ${savesId} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
+  }
+
+  // Puts `lines` in the file and says so the way Vim does, e.g. "backup.txt" [New] 1L, 30B written.
+  function writeFile(name: string, lines: string[]): string {
+    const isNew = !(name in files);
+    files = { ...files, [name]: lines };
+    const bytes = new TextEncoder().encode(lines.join('\n') + '\n').length;
+    return `"${name}"${isNew ? ' [New]' : ''} ${lines.length}L, ${bytes}B written`;
+  }
+
+  function onWrite(file: string | undefined, lines: string[]) {
+    if (!writes) return notYetWriting();
+    setCmdline(writeFile(file ?? lesson.fileName, lines));
+    // Writing changes nothing the editor watches, so judge here: the TODO may be to write.
+    judge();
+  }
+
   function onWriteQuit() {
     if (!lesson.shell) return;
-    if (!lesson.saves) {
-      const savesId = Object.values(lessons).find((l) => l.saves)?.id.replace('-', '.');
-      setCmdline(`保存は${savesId ? ` ${savesId} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
-      return;
-    }
-    saved = editor.snapshot().lines;
-    // Vim reports the write like this as it quits.
-    const bytes = new TextEncoder().encode(saved.join('\n') + '\n').length;
-    shell.print(`"${lesson.fileName}" ${saved.length}L, ${bytes}B written`);
+    if (!writes) return notYetWriting();
+    // Vim reports the write as it quits.
+    shell.print(writeFile(lesson.fileName, editor.snapshot().lines));
     ran = [...ran, ':wq'];
     show('shell');
     judge();
   }
 
-  // :!cmd runs in the directory that holds the lesson file (as it is on disk) and the lesson's other files.
   function onShell(command: string) {
-    setCmdline(runShell(command, { ...lesson.files, [lesson.fileName]: lesson.buffer }).join('\n'));
+    const out = runShell(command, files);
+    files = out.files;
+    setCmdline(out.lines.join('\n'));
     // Running it changes nothing the editor watches, so judge here: the TODO may be to run it.
     judge();
   }
@@ -191,7 +210,7 @@ const next = nextLesson(lesson.id);
   }
 
   function judge() {
-    const s: Snapshot = { ...editor.snapshot(), screen, ran };
+    const s: Snapshot = { ...editor.snapshot(), screen, ran, files };
     const stuck = lesson.stuck?.(s) ?? false;
     // Until the learner starts over, keep pointing at the button that fixes it.
     $('btn-reset').classList.toggle('attention', stuck);
@@ -321,7 +340,7 @@ const next = nextLesson(lesson.id);
     progress = startProgress();
     keyCount = 0;
     ran = [];
-    saved = undefined;
+    files = startFiles();
     resetEditor();
     shell.reset();
     renderTodos();

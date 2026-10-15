@@ -12,6 +12,8 @@ export interface EditorHandlers {
   onChange(s: EditorSnapshot): void;
   /** `:q` was run. `force` is true for `:q!`. */
   onQuit(force: boolean): void;
+  /** `:w` was run: the lines to write (all, or the range, e.g. `:'<,'>w`), to `file` or else the file open. */
+  onWrite(file: string | undefined, lines: string[]): void;
   /** `:wq` was run. */
   onWriteQuit(): void;
   /** A line for the command line under the editor, e.g. what Ctrl-G reports. */
@@ -51,19 +53,30 @@ const targetField = StateField.define<DecorationSet>({
 });
 
 // Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
+interface ExParams {
+  argString?: string;
+  /** The range, as 0-based lines, when one was given. */
+  line?: number;
+  lineEnd?: number;
+}
+
 interface Route {
   handlers: EditorHandlers;
   undoLine(): void;
   fileInfo(): void;
+  write(params: ExParams): void;
 }
 const routes = new WeakMap<object, Route>();
-Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
+Vim.defineEx('quit', 'q', (cm: object, params: ExParams) => {
   routes.get(cm)?.handlers.onQuit(params.argString?.trim() === '!');
 });
 Vim.defineEx('wq', 'wq', (cm: object) => {
   routes.get(cm)?.handlers.onWriteQuit();
 });
-Vim.defineEx('!', '!', (cm: object, params: { argString?: string }) => {
+Vim.defineEx('write', 'w', (cm: object, params: ExParams) => {
+  routes.get(cm)?.write(params);
+});
+Vim.defineEx('!', '!', (cm: object, params: ExParams) => {
   routes.get(cm)?.handlers.onShell(params.argString ?? '');
 });
 // codemirror-vim has no U or Ctrl-G in normal mode, so they are added here (see createLessonEditor).
@@ -185,6 +198,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     handlers.onChange(snapshot());
   }
 
+  // :w, :w FILE and :'<,'>w FILE. "!" to force writes the same way: nothing is read-only on disk here.
+  function write({ argString, line, lineEnd }: ExParams) {
+    const { lines } = snapshot();
+    const file = argString?.replace(/^!/, '').trim();
+    handlers.onWrite(file || undefined, line === undefined ? lines : lines.slice(line, (lineEnd ?? line) + 1));
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
@@ -212,7 +232,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     promptKey = '';
     const cm = getCM(view);
     if (!cm) return;
-    routes.set(cm, { handlers, undoLine, fileInfo });
+    routes.set(cm, { handlers, undoLine, fileInfo, write });
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
     // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
