@@ -30,6 +30,8 @@ export interface Snapshot extends EditorSnapshot {
   screen: 'shell' | 'vim';
   /** Commands run so far, in order: shell commands ("vim") and Ex commands (":q!"). */
   ran: string[];
+  /** The files in the directory Vim runs in, by name, as last written. */
+  files: Record<string, string[]>;
 }
 
 export interface Todo {

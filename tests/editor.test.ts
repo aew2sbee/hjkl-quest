@@ -20,7 +20,9 @@ import lesson4_2 from '../src/lessons/4-2';
 import lesson4_3 from '../src/lessons/4-3';
 import lesson4_4 from '../src/lessons/4-4';
 import lesson5_1 from '../src/lessons/5-1';
-import type { Lesson, Pos } from '../src/lessons/types';
+import lesson5_2 from '../src/lessons/5-2';
+import { runShell, type Files } from '../src/engine/files';
+import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
 const noRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
@@ -48,6 +50,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onKey() {},
     onChange() {},
     onQuit() {},
+    onWrite() {},
     onWriteQuit() {},
     onMessage() {},
     onShell() {},
@@ -81,22 +84,31 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
 
 /**
  * Plays `keys` in Vim, as if typed after "vim" + Enter at the shell, judging after every change
- * like the lesson page does. Fails on a key the lesson would stop.
+ * like the lesson page does: also after :w and :!cmd, which keep the pretend files.
+ * Fails on a key the lesson would stop.
  */
-function play(lesson: Lesson, keys: string[]): Progress {
+function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
   let progress = startProgress();
   let verdict = '';
-  const { press } = open(lesson, {
+  let files: Files = { ...lesson.files, [lesson.fileName]: lesson.buffer };
+  const judge = (s: EditorSnapshot) => (progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'], files }));
+  const { editor, press } = open(lesson, {
     onKey: (_name, v) => (verdict = v),
-    onChange(s) {
-      progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'] });
+    onChange: judge,
+    onWrite(file, lines) {
+      files = { ...files, [file ?? lesson.fileName]: lines };
+      judge(editor.snapshot());
+    },
+    onShell(command) {
+      files = runShell(command, files).files;
+      judge(editor.snapshot());
     },
   });
   for (const key of keys) {
     press(key);
     expect(verdict, key).toBe('pass');
   }
-  return progress;
+  return { ...progress, files };
 }
 
 /** "w w dw" → ["w", "w", "d", "w"]. Keys are single characters, or Escape / Ctrl-x. */
@@ -328,7 +340,7 @@ describe('lesson 3-1 in Vim', () => {
   it('asks for p when the order is made some other way', () => {
     const [b, a, d, c] = lesson3_1.buffer;
     // E.g. b) typed again by hand under a) with A, after deleting it with dd.
-    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'] };
+    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {} };
     expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
   });
 });
@@ -342,7 +354,7 @@ describe('lesson 3-2 in Vim', () => {
 
   it('asks for r when the letter is fixed with x and i', () => {
     const lines = ['---> The cat sat on tha mat und slept.'];
-    const s = { lines, cursor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'] };
+    const s = { lines, cursor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {} };
     expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
   });
 });
@@ -496,14 +508,38 @@ describe('lesson 5-1 in Vim', () => {
   });
 
   it('clears in optimalKeys with :!ls and :!cat todo.txt', () => {
-    let progress = startProgress();
     const seq = [...typed(':!ls'), 'Enter', ...typed(':!cat todo.txt'), 'Enter'];
-    // The lesson page judges once the command has run, since it changes nothing the editor watches.
-    const { editor, press } = open(lesson5_1, {
-      onShell: () => (progress = step(lesson5_1, progress, { ...editor.snapshot(), screen: 'vim', ran: ['vim'] })),
-    });
-    press(...seq);
-    expect(progress).toMatchObject({ done: 2, wrong: undefined });
+    expect(play(lesson5_1, seq)).toMatchObject({ done: 2, wrong: undefined });
     expect(4 + seq.length).toBe(lesson5_1.optimalKeys);
+  });
+});
+
+describe(':w in the editor', () => {
+  it('writes the whole file, or the lines of a range, to the file named', () => {
+    const writes: [string | undefined, string[]][] = [];
+    const { press } = open(lesson2_6, { onWrite: (file, lines) => writes.push([file, lines]) });
+    press(':', 'w', 'Enter', ...typed(':w! all.txt'), 'Enter', ...typed(':2,3w part.txt'), 'Enter');
+    expect(writes).toEqual([
+      [undefined, lesson2_6.buffer],
+      ['all.txt', lesson2_6.buffer],
+      ['part.txt', lesson2_6.buffer.slice(1, 3)],
+    ]);
+  });
+});
+
+describe('lesson 5-2 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('clears in optimalKeys with :w backup.txt, :!ls, :!rm backup.txt', () => {
+    const seq = [...run(':w backup.txt'), ...run(':!ls'), ...run(':!rm backup.txt')];
+    const p = play(lesson5_2, seq);
+    expect(p).toMatchObject({ done: 3, wrong: undefined });
+    expect(Object.keys(p.files)).toEqual(['lesson5-2.txt']);
+    expect(4 + seq.length).toBe(lesson5_2.optimalKeys);
+  });
+
+  it('needs the backup to be there when listing', () => {
+    expect(play(lesson5_2, run(':!ls')).done).toBe(0);
+    expect(play(lesson5_2, [...run(':w backup.txt'), ...run(':!rm backup.txt'), ...run(':!ls')]).done).toBe(1);
   });
 });

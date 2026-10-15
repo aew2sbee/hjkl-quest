@@ -12,7 +12,7 @@ import lesson2_1 from '../src/lessons/2-1';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [], commands: [] });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {} });
 const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   lines: lesson1_2.buffer,
   cursor: { line: 0, ch: 0 },
@@ -20,6 +20,7 @@ const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   screen,
   ran,
   commands: [],
+  files: {},
 });
 const key = (k: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key: k,
@@ -131,6 +132,7 @@ describe('lesson 1-3', () => {
     screen: 'vim',
     ran: ['vim'],
     commands: [],
+    files: {},
   });
 
   it('is done after fixing all three words', () => {
@@ -164,6 +166,7 @@ describe('lesson 1-4', () => {
     screen: 'vim',
     ran: ['vim'],
     commands: [],
+    files: {},
   });
 
   it('is done after adding both words and going back to normal mode', () => {
@@ -192,6 +195,7 @@ describe('lesson 1-5', () => {
     screen: 'vim',
     ran: ['vim'],
     commands: [],
+    files: {},
   });
   const [sun, cats] = lesson1_5.buffer;
   const sunDone = '---> The sun rises in the east.';
@@ -230,6 +234,7 @@ describe('lesson 1-6', () => {
     screen,
     ran,
     commands: [],
+    files: {},
   });
   const fixed = '---> Remember to buy milk.';
 
@@ -269,6 +274,7 @@ describe('lesson 2-1', () => {
     screen: 'vim',
     ran: ['vim'],
     commands,
+    files: {},
   });
   const noVery = '---> Please keep the noisy important words only.';
   const noNoisy = '---> Please keep very the important words only.';
@@ -378,10 +384,11 @@ describe('nextLesson', () => {
     expect(nextLesson('4-2')).toEqual({ id: '4-3', title: '% で対応する括弧へ', ready: true });
     expect(nextLesson('4-3')).toEqual({ id: '4-4', title: ':s で置換', ready: true });
     expect(nextLesson('4-4')).toEqual({ id: '5-1', title: ':! で外部コマンド', ready: true });
+    expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: false });
+    expect(nextLesson('5-2')).toEqual({ id: '5-3', title: '選んだ行だけ保存', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
@@ -400,15 +407,22 @@ describe('runShell', () => {
   const files = { 'b.txt': ['two'], 'a.txt': ['one', 'more'] };
 
   it('lists the files with ls', () => {
-    expect(runShell('ls', files)).toEqual(['a.txt  b.txt']);
+    expect(runShell('ls', files).lines).toEqual(['a.txt  b.txt']);
   });
 
   it('prints files with cat, and says which are missing', () => {
-    expect(runShell(' cat a.txt  c.txt', files)).toEqual(['one', 'more', 'cat: c.txt: No such file or directory']);
+    expect(runShell(' cat a.txt  c.txt', files).lines).toEqual(['one', 'more', 'cat: c.txt: No such file or directory']);
+  });
+
+  it('removes files with rm, and says which are missing', () => {
+    expect(runShell('rm a.txt c.txt', files)).toEqual({
+      lines: ["rm: cannot remove 'c.txt': No such file or directory"],
+      files: { 'b.txt': ['two'] },
+    });
   });
 
   it('does not know other commands', () => {
-    expect(runShell('dir', files)).toEqual(['zsh:1: command not found: dir']);
-    expect(runShell('', files)).toEqual([]);
+    expect(runShell('dir', files)).toEqual({ lines: ['zsh:1: command not found: dir'], files });
+    expect(runShell('', files).lines).toEqual([]);
   });
 });
