@@ -25,6 +25,8 @@ export interface EditorSnapshot {
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
   options: SearchOptions;
+  /** The file open in Vim. */
+  file: string;
   /**
    * Commands run since Vim opened, in order, e.g. ["w", "dw", "i", ":s/a/b/g"]. Normal-mode commands
    * by their keys, searches by the key that opened them ("/"), and Ex commands as typed after ":".

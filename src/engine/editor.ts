@@ -1,5 +1,5 @@
 import { history, isolateHistory } from '@codemirror/commands';
-import { Annotation, ChangeSet, EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
+import { Annotation, ChangeSet, Compartment, EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
 import type { EditorSnapshot, Lesson, Pos, SearchOptions, Span } from '../lessons/types';
@@ -22,6 +22,8 @@ export interface EditorHandlers {
   onShell(command: string): void;
   /** `:help` was run, with the topic ("" for none). */
   onHelp(topic: string): void;
+  /** `:e` was run, with what follows it (e.g. "~/.vimrc", "! notes.txt"). */
+  onEdit(arg: string): void;
   /** The lines `:r` puts in: a file's (`part.txt`), or a command's output (`!ls`). Undefined when there is no such file. */
   read(source: string): string[] | undefined;
 }
@@ -32,6 +34,10 @@ export interface LessonEditor {
   setTarget(span: Span | null): void;
   /** Start over in normal mode with `lines` (else the lesson's text) and `cursor` (else the start). */
   reset(lines?: string[], cursor?: Pos): void;
+  /** Start over with a file, as Vim opens: the lesson's file where the lesson starts, others at the top. */
+  open(fileName: string, lines: string[]): void;
+  /** Switch to another file for `:e`, keeping Vim as it is. The undo history starts over. */
+  edit(fileName: string, lines: string[]): void;
   focus(): void;
 }
 
@@ -84,6 +90,9 @@ Vim.defineEx('wq', 'wq', (cm: object) => {
 Vim.defineEx('write', 'w', (cm: object, params: ExParams) => {
   routes.get(cm)?.write(params);
 });
+Vim.defineEx('edit', 'e', (cm: object, params: ExParams) => {
+  routes.get(cm)?.handlers.onEdit(params.argString ?? '');
+});
 Vim.defineEx('help', 'h', (cm: object, params: ExParams) => {
   routes.get(cm)?.handlers.onHelp(params.argString ?? '');
 });
@@ -117,6 +126,8 @@ const byUndoLine = Annotation.define<boolean>();
 /** Puts a Vim editor for `lesson` into `parent`. */
 export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers: EditorHandlers): LessonEditor {
   let mode = 'normal';
+  // The file open: the lesson's, or another one opened with :e.
+  let fileName = lesson.fileName;
   // Normal-mode commands run so far, and the keys of the one being typed (e.g. "d" before "w").
   let commands: string[] = [];
   let typing: string[] = [];
@@ -163,6 +174,13 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     }),
   );
 
+  // Changes join into one undo step until the next command starts a new one.
+  const undoHistory = history({ newGroupDelay: Number.MAX_SAFE_INTEGER, joinToEvent: () => true });
+  const label = () => EditorView.contentAttributes.of({ 'aria-label': `Vim エディタ: ${fileName}` });
+  // Swapped for :e, which changes the file without a new state.
+  const historySlot = new Compartment();
+  const labelSlot = new Compartment();
+
   const makeState = (lines = lesson.buffer, cursor = lesson.start) => {
     const doc = Text.of(lines);
     return EditorState.create({
@@ -172,8 +190,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         guard,
         vim(),
         lineNumbers(),
-        // Changes join into one undo step until the next command starts a new one.
-        history({ newGroupDelay: Number.MAX_SAFE_INTEGER, joinToEvent: () => true }),
+        historySlot.of(undoHistory),
         EditorState.transactionExtender.of((tr) => {
           if (!newUndoStep || !tr.docChanged || tr.isUserEvent('undo') || tr.isUserEvent('redo')) return null;
           newUndoStep = false;
@@ -181,7 +198,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         }),
         targetField,
         EditorState.readOnly.of(lesson.readOnly),
-        EditorView.contentAttributes.of({ 'aria-label': `Vim エディタ: ${lesson.fileName}` }),
+        labelSlot.of(label()),
         EditorView.updateListener.of((u) => {
           for (const tr of u.transactions) {
             if (!tr.docChanged || tr.annotation(byUndoLine)) continue;
@@ -226,7 +243,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     const { cursor } = snapshot();
     const total = view.state.doc.lines;
     const percent = Math.floor(((cursor.line + 1) * 100) / total);
-    handlers.onMessage(`"${lesson.fileName}" line ${cursor.line + 1} of ${total} --${percent}%-- col ${cursor.ch + 1}`);
+    handlers.onMessage(`"${fileName}" line ${cursor.line + 1} of ${total} --${percent}%-- col ${cursor.ch + 1}`);
     // Nothing the editor watches changes, so judge here: the TODO may be to run this.
     handlers.onChange(snapshot());
   }
@@ -318,14 +335,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     true,
   );
 
-  // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
-  const listen = () => {
-    mode = 'normal';
+  // What is tracked about the commands run in one file.
+  const forgetCommands = () => {
     commands = [];
     typing = [];
     newUndoStep = false;
     lineBefore = null;
     lineStale = false;
+  };
+
+  // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
+  const listen = () => {
+    mode = 'normal';
+    forgetCommands();
     promptKey = '';
     lastSearch = '';
     searching = false;
@@ -359,6 +381,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       anchor: { line: anchor.line, ch: anchor.ch },
       mode,
       commands: [...commands],
+      file: fileName,
       options: {
         ignorecase: searchOption('ignorecase'),
         hlsearch: searchOption('hlsearch'),
@@ -373,6 +396,24 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     reset(lines, cursor) {
       view.setState(makeState(lines, cursor));
       listen();
+    },
+    open(name, lines) {
+      fileName = name;
+      // The lesson's file opens where the lesson starts; other files at the top.
+      view.setState(makeState(lines, name === lesson.fileName ? lesson.start : { line: 0, ch: 0 }));
+      listen();
+    },
+    edit(name, lines) {
+      fileName = name;
+      // Not a new state as in open(): this runs inside :e, and codemirror-vim goes on using its state
+      // after the command. Taking the history out and putting it back starts it over.
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: lines.join('\n') },
+        selection: { anchor: 0 },
+        effects: [historySlot.reconfigure([]), labelSlot.reconfigure(label())],
+      });
+      view.dispatch({ effects: historySlot.reconfigure(undoHistory) });
+      forgetCommands();
     },
     focus() {
       view.focus();

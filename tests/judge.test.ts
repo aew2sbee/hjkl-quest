@@ -13,7 +13,7 @@ import lesson2_1 from '../src/lessons/2-1';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, anchor: cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, anchor: cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false }, file: lesson.fileName });
 const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   lines: lesson1_2.buffer,
   cursor: { line: 0, ch: 0 },
@@ -24,6 +24,7 @@ const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   commands: [],
   files: {},
   options: { ignorecase: false, hlsearch: false, incsearch: false },
+  file: 'lesson.txt',
 });
 const key = (k: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key: k,
@@ -143,6 +144,7 @@ describe('lesson 1-3', () => {
     commands: [],
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
 
   it('is done after fixing all three words', () => {
@@ -179,6 +181,7 @@ describe('lesson 1-4', () => {
     commands: [],
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
 
   it('is done after adding both words and going back to normal mode', () => {
@@ -210,6 +213,7 @@ describe('lesson 1-5', () => {
     commands: [],
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
   const [sun, cats] = lesson1_5.buffer;
   const sunDone = '---> The sun rises in the east.';
@@ -251,6 +255,7 @@ describe('lesson 1-6', () => {
     commands: [],
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
   const fixed = '---> Remember to buy milk.';
 
@@ -293,6 +298,7 @@ describe('lesson 2-1', () => {
     commands,
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
   const noVery = '---> Please keep the noisy important words only.';
   const noNoisy = '---> Please keep very the important words only.';
@@ -356,6 +362,7 @@ describe('step while typing', () => {
     commands,
     files: {},
     options: { ignorecase: false, hlsearch: false, incsearch: false },
+    file: 'lesson.txt',
   });
 
   it('keeps what made a later TODO hold while text is typed for the current one', () => {
@@ -445,10 +452,11 @@ describe('nextLesson', () => {
     expect(nextLesson('6-3')).toEqual({ id: '6-4', title: 'y と p でコピー', ready: true });
     expect(nextLesson('6-4')).toEqual({ id: '6-5', title: ':set で設定', ready: true });
     expect(nextLesson('6-5')).toEqual({ id: '7-1', title: ':help でヘルプ', ready: true });
+    expect(nextLesson('7-1')).toEqual({ id: '7-2', title: 'vimrc で設定', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('7-1')).toEqual({ id: '7-2', title: 'vimrc で設定', ready: false });
+    expect(nextLesson('7-2')).toEqual({ id: '7-3', title: 'Tab で補完', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
@@ -466,8 +474,8 @@ describe('keyName', () => {
 describe('runShell', () => {
   const files = { 'b.txt': ['two'], 'a.txt': ['one', 'more'] };
 
-  it('lists the files with ls', () => {
-    expect(runShell('ls', files).lines).toEqual(['a.txt  b.txt']);
+  it('lists the files with ls, leaving out those elsewhere', () => {
+    expect(runShell('ls', { ...files, '~/.vimrc': [] }).lines).toEqual(['a.txt  b.txt']);
   });
 
   it('prints files with cat, and says which are missing', () => {
