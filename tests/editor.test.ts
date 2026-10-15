@@ -17,6 +17,7 @@ import lesson3_3 from '../src/lessons/3-3';
 import lesson3_4 from '../src/lessons/3-4';
 import lesson4_1 from '../src/lessons/4-1';
 import lesson4_2 from '../src/lessons/4-2';
+import lesson4_3 from '../src/lessons/4-3';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -430,5 +431,23 @@ describe('lesson 4-2 in Vim', () => {
     const e = keydown('Ctrl-o');
     document.querySelector('.cm-content')!.dispatchEvent(e);
     expect(e.defaultPrevented).toBe(true);
+  });
+});
+
+describe('lesson 4-3 in Vim', () => {
+  it('clears in optimalKeys with %, % l %, l %', () => {
+    const seq = keys('% % l % l %');
+    expect(play(lesson4_3, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson4_3.optimalKeys);
+  });
+
+  it('jumps over the brackets inside the braces', () => {
+    const { editor, press } = open(lesson4_3);
+    press('8', 'w', '%');
+    expect(editor.snapshot().cursor.ch).toBe(lesson4_3.buffer[0].indexOf('}'));
+  });
+
+  it('asks for % when the bracket is reached with h', () => {
+    expect(play(lesson4_3, keys('$ 8h')).wrong?.id).toBe('match-paren');
   });
 });
