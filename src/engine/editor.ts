@@ -81,7 +81,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     EditorView.domEventHandlers({
       keydown(e) {
         if (e.isComposing) return false;
-        const verdict = classifyKey(lesson, e, mode);
+        // r takes the next character as text, e.g. "a" in "ra" even before a is taught.
+        const verdict = classifyKey(lesson, e, mode, mode === 'normal' && /^\d*r$/.test(typing.join('')));
         if (verdict === 'ignore') return false;
         const name = keyName(e);
         handlers.onKey(name, verdict);

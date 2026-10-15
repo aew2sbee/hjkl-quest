@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EditorView } from '@codemirror/view';
 import { getCM } from '@replit/codemirror-vim';
 import { createLessonEditor, type EditorHandlers } from '../src/engine/editor';
-import { classifyKey, startProgress, step, type Progress } from '../src/engine/judge';
+import { startProgress, step, type Progress } from '../src/engine/judge';
 import lesson2_1 from '../src/lessons/2-1';
 import lesson2_2 from '../src/lessons/2-2';
 import lesson2_3 from '../src/lessons/2-3';
@@ -12,6 +12,7 @@ import lesson2_5 from '../src/lessons/2-5';
 import lesson2_6 from '../src/lessons/2-6';
 import lesson2_7 from '../src/lessons/2-7';
 import lesson3_1 from '../src/lessons/3-1';
+import lesson3_2 from '../src/lessons/3-2';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -54,16 +55,16 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
  */
 function play(lesson: Lesson, keys: string[]): Progress {
   let progress = startProgress();
-  let mode = 'normal';
+  let verdict = '';
   const { press } = open(lesson, {
+    onKey: (_name, v) => (verdict = v),
     onChange(s) {
-      mode = s.mode;
       progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'] });
     },
   });
   for (const key of keys) {
-    expect(classifyKey(lesson, keyEvent(key), mode), key).toBe('pass');
     press(key);
+    expect(verdict, key).toBe('pass');
   }
   return progress;
 }
@@ -300,5 +301,19 @@ describe('lesson 3-1 in Vim', () => {
     // E.g. b) typed again by hand under a) with A, after deleting it with dd.
     const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'] };
     expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
+  });
+});
+
+describe('lesson 3-2 in Vim', () => {
+  it('clears in optimalKeys with 2e re, 4e re, 2w ra', () => {
+    const seq = keys('2e re 4e re 2w ra');
+    expect(play(lesson3_2, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson3_2.optimalKeys);
+  });
+
+  it('asks for r when the letter is fixed with x and i', () => {
+    const lines = ['---> The cat sat on tha mat und slept.'];
+    const s = { lines, cursor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'] };
+    expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
   });
 });
