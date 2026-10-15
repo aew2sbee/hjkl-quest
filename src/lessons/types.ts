@@ -40,7 +40,10 @@ export interface EditorSnapshot {
 export interface Snapshot extends EditorSnapshot {
   /** Which screen is showing: the shell prompt or Vim. */
   screen: 'shell' | 'vim';
-  /** Commands run so far, in order: shell commands ("vim") and Ex commands (":q!"). */
+  /**
+   * What was run so far, in order: shell commands ("vim"), Ex commands that leave Vim (":q!"), and
+   * completions in the command line ("<C-D>:e", "<Tab>:edit").
+   */
   ran: string[];
   /** The files in the directory Vim runs in, by name, as last written. */
   files: Record<string, string[]>;

@@ -3,10 +3,11 @@ import { Annotation, ChangeSet, Compartment, EditorSelection, EditorState, Prec,
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
 import type { EditorSnapshot, Lesson, Pos, SearchOptions, Span } from '../lessons/types';
+import { completions } from './complete';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
-  /** A key pressed in the editor and what happened to it. Not called for modifiers or Tab. */
+  /** A key pressed in the editor and what happened to it. Not called for modifiers, or for Tab outside completion. */
   onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>): void;
   /** Called after anything the judge looks at changes: text, cursor or mode. */
   onChange(s: EditorSnapshot): void;
@@ -24,6 +25,10 @@ export interface EditorHandlers {
   onHelp(topic: string): void;
   /** `:e` was run, with what follows it (e.g. "~/.vimrc", "! notes.txt"). */
   onEdit(arg: string): void;
+  /** The file names the command line can complete. */
+  fileNames(): string[];
+  /** Ctrl-D listed or Tab completed in the command line, as the key and the line: "<C-D>:e", "<Tab>:edit". */
+  onCompleted(entry: string): void;
   /** The lines `:r` puts in: a file's (`part.txt`), or a command's output (`!ls`). Undefined when there is no such file. */
   read(source: string): string[] | undefined;
 }
@@ -62,7 +67,6 @@ const targetField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 interface ExParams {
   argString?: string;
   /** What follows the command, split at spaces. */
@@ -72,6 +76,7 @@ interface ExParams {
   lineEnd?: number;
 }
 
+// Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 interface Route {
   handlers: EditorHandlers;
   undoLine(): void;
@@ -128,7 +133,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let mode = 'normal';
   // The file open: the lesson's, or another one opened with :e.
   let fileName = lesson.fileName;
-  // Normal-mode commands run so far, and the keys of the one being typed (e.g. "d" before "w").
+  // Commands run so far (see EditorSnapshot.commands), and the keys of the one being typed (e.g. "d" before "w").
   let commands: string[] = [];
   let typing: string[] = [];
   // Set when a command completes, so its first change starts a new undo step: u undoes one command,
@@ -140,6 +145,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let lineStale = false;
   // The key that opened the prompt under the editor: ":" for an Ex command, "/" or "?" for a search.
   let promptKey = '';
+  // Tab pressed again right after a Tab goes on to the next match: what it chose from, and what it put in.
+  let tabbing: { base: string; matches: string[]; index: number; shown: string } | null = null;
   // The last search as typed, before it was adjusted to 'ignorecase', and whether one is being typed now.
   let lastSearch = '';
   let searching = false;
@@ -257,15 +264,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   // :r FILE and :r !cmd put the lines under the cursor's line (or the line given, :$r), and the cursor on the first.
   function read({ argString, line }: ExParams) {
+    // Checked first, so :r !cmd does not run a command (e.g. rm) for text that is never put in.
+    if (lesson.readOnly) return handlers.onMessage("E21: Cannot make changes, 'modifiable' is off");
     const source = argString?.trim() ?? '';
     const lines = handlers.read(source);
     if (!lines) return handlers.onMessage(`E484: Can't open file ${source}`);
-    if (lesson.readOnly) return handlers.onMessage("E21: Cannot make changes, 'modifiable' is off");
     if (!lines.length) return;
-    const after = view.state.doc.line((line ?? snapshot().cursor.line) + 1);
+    const under = line ?? snapshot().cursor.line;
+    // :0r puts the lines above the first line.
+    const at = under < 0 ? 0 : view.state.doc.line(under + 1).to;
+    const text = under < 0 ? lines.join('\n') + '\n' : '\n' + lines.join('\n');
     view.dispatch({
-      changes: { from: after.to, insert: '\n' + lines.join('\n') },
-      selection: { anchor: after.to + 1 },
+      changes: { from: at, insert: text },
+      selection: { anchor: under < 0 ? 0 : at + 1 },
       annotations: isolateHistory.of('full'),
       userEvent: 'input',
     });
@@ -273,10 +284,14 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
 
   // :set ic, :set hls is, :set noic. Only the search options are known here.
   function set(args: string[]) {
+    // Like Vim, the options before an unknown one are still set.
     for (const arg of args) {
       const [, no, name] = /^(no)?(\w+)$/.exec(arg) ?? [];
       const option = Object.entries(searchOptions).find(([long, short]) => name === long || name === short)?.[0];
-      if (!option) return handlers.onMessage(`E518: Unknown option: ${arg}`);
+      if (!option) {
+        handlers.onMessage(`E518: Unknown option: ${arg}`);
+        break;
+      }
       Vim.setOption(option, !no);
     }
     // The last search follows 'ignorecase' too, so n after :set ic finds VIM as well as vim.
@@ -310,6 +325,22 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     parent.classList.toggle('show-matches', on);
   }
 
+  // Ctrl-D lists what can finish the word before the cursor; Tab puts the first one in, then the next, as in Vim.
+  function complete(input: HTMLInputElement, key: string) {
+    const line = input.value;
+    if (key === 'Ctrl-d') {
+      tabbing = null;
+      handlers.onMessage(completions(line, handlers.fileNames()).matches.join('  '));
+      handlers.onCompleted(`<C-D>:${line}`);
+      return;
+    }
+    if (tabbing?.shown !== line) tabbing = { ...completions(line, handlers.fileNames()), index: -1, shown: line };
+    if (!tabbing.matches.length) return;
+    tabbing.index = (tabbing.index + 1) % tabbing.matches.length;
+    input.value = tabbing.shown = tabbing.base + tabbing.matches[tabbing.index];
+    handlers.onCompleted(`<Tab>:${input.value}`);
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
@@ -318,10 +349,21 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     'keydown',
     (e) => {
       if (!(e.target instanceof HTMLInputElement) || e.isComposing) return;
-      if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(keyName(e), 'pass');
+      const key = keyName(e);
+      // Completion, in the lessons that teach it. Elsewhere Tab leaves the editor as usual.
+      if (promptKey === ':' && (key === 'Tab' || key === 'Ctrl-d') && lesson.keys.includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handlers.onKey(key, 'pass');
+        complete(e.target, key);
+        return;
+      }
+      if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(key, 'pass');
       // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
       // Like a normal-mode command, it is logged before it changes anything.
       if (e.key === 'Enter' && promptKey === ':') commands.push(`:${e.target.value}`);
+      // A completion cycle ends with the line it was in.
+      if (e.key === 'Enter' || e.key === 'Escape') tabbing = null;
       if ((e.key === 'Enter' || e.key === 'Escape') && promptKey !== ':') {
         // An empty search repeats the last one, which was already adjusted.
         if (e.key === 'Enter' && e.target.value) {
@@ -345,14 +387,19 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   };
 
   // The Vim plugin (and its CodeMirror adapter) is recreated on every setState, so listen again each time.
+  // A new Vim: options are global in codemirror-vim, so they go back to Vim's defaults, and no search is left.
+  // Not on reset (もう一度), which only goes back in the same Vim, settings and last search kept.
+  const startVim = () => {
+    lastSearch = '';
+    for (const name of Object.keys(searchOptions)) Vim.setOption(name, false);
+  };
+
   const listen = () => {
     mode = 'normal';
     forgetCommands();
     promptKey = '';
-    lastSearch = '';
     searching = false;
-    // Options are global in codemirror-vim, so each start goes back to Vim's defaults.
-    for (const name of Object.keys(searchOptions)) Vim.setOption(name, false);
+    tabbing = null;
     showMatches();
     const cm = getCM(view);
     if (!cm) return;
@@ -369,6 +416,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       handlers.onChange(snapshot());
     });
   };
+  startVim();
   listen();
 
   function snapshot(): EditorSnapshot {
@@ -401,6 +449,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       fileName = name;
       // The lesson's file opens where the lesson starts; other files at the top.
       view.setState(makeState(lines, name === lesson.fileName ? lesson.start : { line: 0, ch: 0 }));
+      startVim();
       listen();
     },
     edit(name, lines) {

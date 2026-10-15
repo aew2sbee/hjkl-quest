@@ -120,6 +120,12 @@ const next = nextLesson(lesson.id);
     onHelp,
     onEdit,
     read,
+    fileNames: () => Object.keys(files),
+    onCompleted(entry) {
+      ran = [...ran, entry];
+      // Completing changes nothing the editor watches, so judge here: the TODO may be to complete.
+      judge();
+    },
   });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
     onKey: (name) => onKey(name, 'pass'),
@@ -176,8 +182,10 @@ const next = nextLesson(lesson.id);
   }
 
   function notYetWriting() {
-    const savesId = Object.values(lessons).find((l) => l.saves)?.id.replace('-', '.');
-    setCmdline(`保存は${savesId ? ` ${savesId} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
+    const savesId = Object.values(lessons).find((l) => l.saves)?.id;
+    // Ids are "chapter-lesson" with one digit each, so they sort in lesson order.
+    if (savesId && savesId < lesson.id) return setCmdline('このレッスンでは保存しないよ。:q! で終了しよう', 'err');
+    setCmdline(`保存は${savesId ? ` ${savesId.replace('-', '.')} で` : 'あとで'}習うよ。今は :q! で終了しよう`, 'err');
   }
 
   // How Vim gives a file's size, e.g. 1L, 30B.
@@ -211,9 +219,9 @@ const next = nextLesson(lesson.id);
   // :e FILE opens another file, as long as the one open has no changes left unwritten (:e! drops them).
   function onEdit(arg: string) {
     const force = arg.trimStart().startsWith('!');
-    const name = arg.trim().replace(/^!\s*/, '');
-    if (!name) return;
     const { file, lines } = editor.snapshot();
+    // :e alone opens the file open again, as last written; :e! drops the changes to do so.
+    const name = arg.trim().replace(/^!\s*/, '') || file;
     if (!force && lines.join('\n') !== (files[file] ?? ['']).join('\n')) {
       return setCmdline('E37: No write since last change (add ! to override)', 'err');
     }
@@ -223,10 +231,15 @@ const next = nextLesson(lesson.id);
     judge();
   }
 
-  function onShell(command: string) {
+  // Runs a shell command on the files (rm removes them) and gives what it prints.
+  function runCommand(command: string): string[] {
     const out = runShell(command, files);
     files = out.files;
-    setCmdline(out.lines.join('\n'));
+    return out.lines;
+  }
+
+  function onShell(command: string) {
+    setCmdline(runCommand(command).join('\n'));
     // Running it changes nothing the editor watches, so judge here: the TODO may be to run it.
     judge();
   }
@@ -251,10 +264,7 @@ const next = nextLesson(lesson.id);
 
   // What :r puts in: a file, or what :r !cmd prints.
   function read(source: string): string[] | undefined {
-    if (!source.startsWith('!')) return files[source];
-    const out = runShell(source.slice(1), files);
-    files = out.files;
-    return out.lines;
+    return source.startsWith('!') ? runCommand(source.slice(1)) : files[source];
   }
 
   function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {

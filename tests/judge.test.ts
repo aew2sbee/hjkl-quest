@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advance, classifyKey, highlightFor, keyName, startProgress, step } from '../src/engine/judge';
+import { completions } from '../src/engine/complete';
 import { runShell } from '../src/engine/files';
 import { helpPage } from '../src/engine/help';
 import { parseShellCommand } from '../src/engine/shell';
@@ -372,6 +373,14 @@ describe('step while typing', () => {
     expect(p).toMatchObject({ done: 2, wrong: undefined });
   });
 
+  it('judges a fix undone and typed again by the command that redid it', () => {
+    let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['x']));
+    expect(p.wrong?.id).toBe('second');
+    p = step(lesson2, p, snap(['', ''], 'insert', ['x', 'o']));
+    p = step(lesson2, p, snap(['', 'b'], 'normal', ['x', 'o']));
+    expect(p.wrong).toBeUndefined();
+  });
+
   it('does not count a kept hold until its condition is back', () => {
     let p = step(lesson2, startProgress(), snap(['', 'b'], 'normal', ['o']));
     p = step(lesson2, p, snap(['a', ''], 'insert', ['o', 'i']));
@@ -453,10 +462,7 @@ describe('nextLesson', () => {
     expect(nextLesson('6-4')).toEqual({ id: '6-5', title: ':set で設定', ready: true });
     expect(nextLesson('6-5')).toEqual({ id: '7-1', title: ':help でヘルプ', ready: true });
     expect(nextLesson('7-1')).toEqual({ id: '7-2', title: 'vimrc で設定', ready: true });
-  });
-
-  it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('7-2')).toEqual({ id: '7-3', title: 'Tab で補完', ready: false });
+    expect(nextLesson('7-2')).toEqual({ id: '7-3', title: 'Tab で補完', ready: true });
   });
 
   it('is undefined after the last lesson', () => {
@@ -500,5 +506,20 @@ describe('helpPage', () => {
     expect(helpPage('')?.file).toBe('help.txt');
     expect(helpPage(' w ')?.file).toBe('motion.txt');
     expect(helpPage('nothing')).toBeUndefined();
+  });
+});
+
+describe('completions', () => {
+  const files = ['notes.txt', 'lesson.txt', '~/.vimrc'];
+
+  it('finishes the command name', () => {
+    expect(completions('e', files).matches).toEqual(['earlier', 'echo', 'edit', 'else', 'endif', 'enew', 'execute', 'exit']);
+    expect(completions('ed', files)).toEqual({ base: '', matches: ['edit'] });
+  });
+
+  it('finishes a file name after a command that takes one', () => {
+    expect(completions('edit n', files)).toEqual({ base: 'edit ', matches: ['notes.txt'] });
+    expect(completions('e ', files).matches).toEqual(['lesson.txt', 'notes.txt', '~/.vimrc']);
+    expect(completions('set n', files).matches).toEqual([]);
   });
 });

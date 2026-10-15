@@ -30,6 +30,7 @@ import lesson6_4 from '../src/lessons/6-4';
 import lesson6_5 from '../src/lessons/6-5';
 import lesson7_1 from '../src/lessons/7-1';
 import lesson7_2 from '../src/lessons/7-2';
+import lesson7_3 from '../src/lessons/7-3';
 import { runShell, type Files } from '../src/engine/files';
 import { helpPage } from '../src/engine/help';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
@@ -67,6 +68,8 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onHelp() {},
     onEdit() {},
     read: () => undefined,
+    fileNames: () => [],
+    onCompleted() {},
     ...handlers,
   });
   const view = EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!;
@@ -105,7 +108,8 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
   let verdict = '';
   let files: Files = { ...lesson.files, [lesson.fileName]: lesson.buffer };
   let help: string | undefined;
-  const judge = (s: EditorSnapshot) => (progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'], files, help }));
+  let ran = ['vim'];
+  const judge = (s: EditorSnapshot) => (progress = step(lesson, progress, { ...s, screen: 'vim', ran, files, help }));
   const { editor, press } = open(lesson, {
     onKey: (_name, v) => (verdict = v),
     onChange: judge,
@@ -129,6 +133,11 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
     onEdit(arg) {
       const name = arg.trim();
       editor.edit(name, files[name] ?? ['']);
+      judge(editor.snapshot());
+    },
+    fileNames: () => Object.keys(files),
+    onCompleted(entry) {
+      ran = [...ran, entry];
       judge(editor.snapshot());
     },
   });
@@ -606,6 +615,19 @@ describe('lesson 5-4 in Vim', () => {
     expect(editor.snapshot().lines).toEqual(lesson5_4.buffer);
   });
 
+  it('reads above the first line with :0r', () => {
+    const { editor, press } = open(lesson5_4, { read: () => ['one'] });
+    press(...run(':0r part.txt'));
+    expect(editor.snapshot().lines).toEqual(['one', ...lesson5_4.buffer]);
+  });
+
+  it('runs no command for :r !cmd in a read-only lesson', () => {
+    const sources: string[] = [];
+    const { press } = open(lesson5_3, { read: (source) => (sources.push(source), []) });
+    press(...run(':r !rm part.txt'));
+    expect(sources).toEqual([]);
+  });
+
   it('says when the file is not there', () => {
     const messages: string[] = [];
     const { editor, press } = open(lesson5_4, { onMessage: (t) => messages.push(t) });
@@ -736,11 +758,24 @@ describe('search options in the editor', () => {
     expect(shown()).toBe(true);
   });
 
-  it('starts over with every option off', () => {
+  it('starts over with every option off when Vim opens again, but keeps them for もう一度', () => {
     const { editor, press } = open(lesson6_5);
-    press(...run(':set ic hls'));
+    press(...run('/vim'), ...run(':set ic hls'));
     editor.reset();
+    expect(editor.snapshot().options).toMatchObject({ ignorecase: true, hlsearch: true });
+    // The last search is still there for n, and still ignores case: Vim on the first line comes first.
+    press('n');
+    expect(editor.snapshot().cursor).toEqual({ line: 0, ch: 24 });
+    editor.open(lesson6_5.fileName, lesson6_5.buffer);
     expect(editor.snapshot().options).toEqual({ ignorecase: false, hlsearch: false, incsearch: false });
+  });
+
+  it('still sets the options before an unknown one, and judges', () => {
+    const seen: boolean[] = [];
+    const { press } = open(lesson6_5, { onChange: (s) => seen.push(s.options.hlsearch) });
+    press(...run(':set hls nu'));
+    expect(seen.at(-1)).toBe(true);
+    expect(shown()).toBe(true);
   });
 });
 
@@ -820,5 +855,47 @@ describe('lesson 7-2 in Vim', () => {
 
   it('does not count the line written in the lesson file', () => {
     expect(play(lesson7_2, ['o', ...typed('set number'), 'Escape', ...run(':w')]).done).toBe(0);
+  });
+});
+
+describe('lesson 7-3 in Vim', () => {
+  const prompt = () => document.querySelector<HTMLInputElement>('.cm-vim-panel input')!;
+
+  it('lists with Ctrl-D and completes with Tab, going on to the next match on another Tab', () => {
+    const messages: string[] = [];
+    const { press } = open(lesson7_3, { onMessage: (t) => messages.push(t), fileNames: () => ['a.txt', 'b.txt'] });
+    press(':', 'e', 'Ctrl-d');
+    expect(messages.at(-1)).toBe('earlier  echo  edit  else  endif  enew  execute  exit');
+    expect(prompt().value).toBe('e');
+    press('d', 'Tab');
+    expect(prompt().value).toBe('edit');
+    press(' ', 'Tab', 'Tab');
+    expect(prompt().value).toBe('edit b.txt');
+  });
+
+  it('starts a new completion after Ctrl-D or a closed command line', () => {
+    const { press } = open(lesson7_3);
+    press(':', 'e', 'Tab', 'Escape', ':', ...typed('earlier'), 'Tab');
+    expect(prompt().value).toBe('earlier');
+  });
+
+  it('keeps Tab from leaving the command line', () => {
+    const { press } = open(lesson7_3);
+    press(':');
+    const e = keydown('Tab');
+    prompt().dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('clears in optimalKeys with :e Ctrl-D, d Tab, space r Tab Enter', () => {
+    const seq = [':', 'e', 'Ctrl-d', 'd', 'Tab', ' ', 'r', 'Tab', 'Enter'];
+    const p = play(lesson7_3, seq);
+    expect(p).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson7_3.optimalKeys);
+  });
+
+  it('does not count a file name typed in full', () => {
+    const seq = [':', 'e', 'Ctrl-d', 'd', 'Tab', ...typed(' readme-for-learners.txt'), 'Enter'];
+    expect(play(lesson7_3, seq).done).toBe(2);
   });
 });
