@@ -10,6 +10,9 @@ type KeyInput = Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>;
  */
 export type KeyVerdict = 'pass' | 'ignore' | 'arrow' | 'unlearned';
 
+/** Insert and replace mode, where keys become text. */
+const typesText = (mode: string) => mode === 'insert' || mode === 'replace';
+
 const arrows: Record<string, string> = { ArrowLeft: 'h', ArrowDown: 'j', ArrowUp: 'k', ArrowRight: 'l' };
 // Tab is left to the browser so keyboard users can move focus out of the editor.
 const ignored = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
@@ -28,8 +31,8 @@ export function classifyKey(lesson: Lesson, e: KeyInput, mode = 'normal', awaiti
   if (ignored.has(e.key) || e.metaKey || e.altKey) return 'ignore';
   if (e.key === 'Escape') return 'pass';
   if (awaitingChar && !e.ctrlKey && e.key.length === 1) return 'pass';
-  // In insert mode keys are typed as text, not run as commands. Enter stays out so the line is not split.
-  if (mode === 'insert' && !e.ctrlKey && (e.key.length === 1 || e.key === 'Backspace')) return 'pass';
+  // In insert and replace mode keys are typed as text, not run as commands. Enter stays out so the line is not split.
+  if (typesText(mode) && !e.ctrlKey && (e.key.length === 1 || e.key === 'Backspace')) return 'pass';
   return lesson.keys.includes(keyName(e)) ? 'pass' : 'unlearned';
 }
 
@@ -75,7 +78,7 @@ export function step(lesson: Lesson, p: Progress, s: Snapshot): Progress {
   const by = s.commands.at(-1) ?? null;
   const holds = new Map<string, string | null>();
   // While text is being typed, a TODO that waits for Esc stops holding for a moment. Keep what made it hold.
-  const typing = s.mode === 'insert' || s.mode === 'replace';
+  const typing = typesText(s.mode);
   for (const todo of lesson.todos.slice(p.done)) {
     if (p.holds.has(todo.id) && (typing || todo.done(s))) holds.set(todo.id, p.holds.get(todo.id)!);
     else if (todo.done(s)) holds.set(todo.id, by);
