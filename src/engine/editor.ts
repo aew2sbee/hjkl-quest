@@ -20,6 +20,8 @@ export interface EditorHandlers {
   onMessage(text: string): void;
   /** `:!cmd` was run, with what follows the "!". */
   onShell(command: string): void;
+  /** `:help` was run, with the topic ("" for none). */
+  onHelp(topic: string): void;
   /** The lines `:r` puts in: a file's (`part.txt`), or a command's output (`!ls`). Undefined when there is no such file. */
   read(source: string): string[] | undefined;
 }
@@ -81,6 +83,9 @@ Vim.defineEx('wq', 'wq', (cm: object) => {
 });
 Vim.defineEx('write', 'w', (cm: object, params: ExParams) => {
   routes.get(cm)?.write(params);
+});
+Vim.defineEx('help', 'h', (cm: object, params: ExParams) => {
+  routes.get(cm)?.handlers.onHelp(params.argString ?? '');
 });
 Vim.defineEx('read', 'r', (cm: object, params: ExParams) => {
   routes.get(cm)?.read(params);

@@ -28,7 +28,9 @@ import lesson6_2 from '../src/lessons/6-2';
 import lesson6_3 from '../src/lessons/6-3';
 import lesson6_4 from '../src/lessons/6-4';
 import lesson6_5 from '../src/lessons/6-5';
+import lesson7_1 from '../src/lessons/7-1';
 import { runShell, type Files } from '../src/engine/files';
+import { helpPage } from '../src/engine/help';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -61,6 +63,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onWriteQuit() {},
     onMessage() {},
     onShell() {},
+    onHelp() {},
     read: () => undefined,
     ...handlers,
   });
@@ -92,14 +95,15 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
 
 /**
  * Plays `keys` in Vim, as if typed after "vim" + Enter at the shell, judging after every change
- * like the lesson page does: also after :w and :!cmd, which keep the pretend files.
+ * like the lesson page does: also after :w, :!cmd and :help, which keep the pretend files and the help.
  * Fails on a key the lesson would stop.
  */
 function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
   let progress = startProgress();
   let verdict = '';
   let files: Files = { ...lesson.files, [lesson.fileName]: lesson.buffer };
-  const judge = (s: EditorSnapshot) => (progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'], files }));
+  let help: string | undefined;
+  const judge = (s: EditorSnapshot) => (progress = step(lesson, progress, { ...s, screen: 'vim', ran: ['vim'], files, help }));
   const { editor, press } = open(lesson, {
     onKey: (_name, v) => (verdict = v),
     onChange: judge,
@@ -112,6 +116,14 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
       judge(editor.snapshot());
     },
     read: (source) => (source.startsWith('!') ? runShell(source.slice(1), files).lines : files[source]),
+    onHelp(topic) {
+      if (helpPage(topic)) help = topic.trim() || 'help.txt';
+      judge(editor.snapshot());
+    },
+    onQuit() {
+      help = undefined;
+      judge(editor.snapshot());
+    },
   });
   for (const key of keys) {
     press(key);
@@ -741,5 +753,26 @@ describe('lesson 6-5 in Vim', () => {
 
   it('asks for n when VIM is found by searching for it', () => {
     expect(play(lesson6_5, [...run('/vim'), ...run('/VIM')]).wrong?.id).toBe('ignore-case');
+  });
+});
+
+describe('lesson 7-1 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('opens help with the topic typed, :h for short', () => {
+    const topics: string[] = [];
+    const { press } = open(lesson7_1, { onHelp: (t) => topics.push(t) });
+    press(...run(':help'), ...run(':h w'));
+    expect(topics.map((t) => t.trim())).toEqual(['', 'w']);
+  });
+
+  it('clears in optimalKeys with :h, :h w, :q', () => {
+    const seq = [...run(':h'), ...run(':h w'), ...run(':q')];
+    expect(play(lesson7_1, seq)).toMatchObject({ done: 3, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson7_1.optimalKeys);
+  });
+
+  it('does not count closing before the w page was open', () => {
+    expect(play(lesson7_1, [...run(':help'), ...run(':q')]).done).toBe(1);
   });
 });

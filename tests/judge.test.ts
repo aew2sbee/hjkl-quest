@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { advance, classifyKey, highlightFor, keyName, startProgress, step } from '../src/engine/judge';
 import { runShell } from '../src/engine/files';
+import { helpPage } from '../src/engine/help';
 import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
@@ -443,10 +444,15 @@ describe('nextLesson', () => {
     expect(nextLesson('6-2')).toEqual({ id: '6-3', title: 'R で上書き', ready: true });
     expect(nextLesson('6-3')).toEqual({ id: '6-4', title: 'y と p でコピー', ready: true });
     expect(nextLesson('6-4')).toEqual({ id: '6-5', title: ':set で設定', ready: true });
+    expect(nextLesson('6-5')).toEqual({ id: '7-1', title: ':help でヘルプ', ready: true });
+  });
+
+  it('says when the next lesson is not built yet', () => {
+    expect(nextLesson('7-1')).toEqual({ id: '7-2', title: 'vimrc で設定', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
-    expect(nextLesson('6-5')).toBeUndefined();
+    expect(nextLesson('7-3')).toBeUndefined();
   });
 });
 
@@ -478,5 +484,13 @@ describe('runShell', () => {
   it('does not know other commands', () => {
     expect(runShell('dir', files)).toEqual({ lines: ['zsh:1: command not found: dir'], files });
     expect(runShell('', files).lines).toEqual([]);
+  });
+});
+
+describe('helpPage', () => {
+  it('opens the main page for :help alone, and a topic by name', () => {
+    expect(helpPage('')?.file).toBe('help.txt');
+    expect(helpPage(' w ')?.file).toBe('motion.txt');
+    expect(helpPage('nothing')).toBeUndefined();
   });
 });
