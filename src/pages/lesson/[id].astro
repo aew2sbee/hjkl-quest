@@ -257,7 +257,7 @@ const next = nextLesson(lesson.id);
     $('retry-what').textContent = wrong.target ? '目的地には着けました！' : 'テキストは直せました！';
     const caps = keyCaps(wrong.require![0]).map((k) => {
       const kbd = document.createElement('kbd');
-      kbd.textContent = k;
+      kbd.textContent = labelFor(k);
       return kbd;
     });
     $('retry-how').replaceChildren('でも今回は ', ...caps, ' で挑戦してみよう');
