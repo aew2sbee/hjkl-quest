@@ -361,10 +361,15 @@ describe('nextLesson', () => {
     expect(nextLesson('2-4')).toEqual({ id: '2-5', title: 'カウント付きの削除', ready: true });
     expect(nextLesson('2-5')).toEqual({ id: '2-6', title: 'dd で行を削除', ready: true });
     expect(nextLesson('2-6')).toEqual({ id: '2-7', title: '取り消しとやり直し', ready: true });
+    expect(nextLesson('2-7')).toEqual({ id: '3-1', title: 'p で貼り付け', ready: true });
+  });
+
+  it('says when the next lesson is not built yet', () => {
+    expect(nextLesson('3-1')).toEqual({ id: '3-2', title: 'r で1文字置き換え', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
-    expect(nextLesson('2-7')).toBeUndefined();
+    expect(nextLesson('3-4')).toBeUndefined();
   });
 });
 

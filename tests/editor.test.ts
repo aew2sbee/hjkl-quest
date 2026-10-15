@@ -11,6 +11,7 @@ import lesson2_4 from '../src/lessons/2-4';
 import lesson2_5 from '../src/lessons/2-5';
 import lesson2_6 from '../src/lessons/2-6';
 import lesson2_7 from '../src/lessons/2-7';
+import lesson3_1 from '../src/lessons/3-1';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -280,5 +281,24 @@ describe('lesson 2-7 in Vim', () => {
 
   it('does not count going back to the start with u as U', () => {
     expect(play(lesson2_7, keys(`${fix} u u u u u`)).done).toBe(1);
+  });
+});
+
+describe('lesson 3-1 in Vim', () => {
+  it('clears in optimalKeys with dd p, j dd p', () => {
+    const seq = keys('dd p j dd p');
+    expect(play(lesson3_1, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson3_1.optimalKeys);
+  });
+
+  it('counts d moved first', () => {
+    expect(play(lesson3_1, keys('j j dd p k k k dd p'))).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('asks for p when the order is made some other way', () => {
+    const [b, a, d, c] = lesson3_1.buffer;
+    // E.g. b) typed again by hand under a) with A, after deleting it with dd.
+    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'] };
+    expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
   });
 });
