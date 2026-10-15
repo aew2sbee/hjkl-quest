@@ -607,16 +607,26 @@ Wednesday: clean the room
 
 ### 6.5 オプションの設定 — `:set ic` `:set hls is` `:set noic`
 
-練習文に `vim` `Vim` `VIM` を混ぜて置く。
+```
+---> I started to learn Vim this week.
+---> The command to start it is vim.
+---> My friend writes VIM in capitals.
+---> Now I can use vim every day.
+```
 
 | # | TODO | 判定 | 必須 |
 |---|---|---|---|
-| 1 | `/vim` で小文字の `vim` だけが見つかることを確かめる | 位置 | `/` `n` |
-| 2 | 大文字小文字を区別しない設定にして、`VIM` まで移動する | 実行・位置 | `:set ic` `n` |
-| 3 | 一致した所を強調表示する | 実行 | `:set hls is` |
-| 4 | 区別する設定に戻す | 実行 | `:set noic` |
+| 1 | `/vim` で小文字の `vim` だけが見つかることを確かめる | 位置 | `/` |
+| 2 | 大文字小文字を区別しない設定にして、`VIM` まで移動する | 位置 | `:set ic` `n` |
+| 3 | 一致した所を強調表示する | 設定 | `:set hls is` |
+| 4 | 区別する設定に戻す | 設定 | `:set noic` |
 
-`@replit/codemirror-vim` がどのオプションに対応しているかは要調査。
+- `@replit/codemirror-vim` は `ignorecase` などに対応していないので、自作した（[spec.md](spec.md) の「検索のオプション」と「`:set`」）。
+- シェル画面から始める。練習文は書き換えられない。使えるキーは 6.4 と同じ。
+- 1 は、1 行目の `Vim` を飛ばして 2 行目の `vim` に着いたら達成。2 は、`n` で 3 行目の `VIM` に着いたら達成（`ignorecase` なしの `n` は `VIM` に止まらない）。`/VIM` で着いたときは、`n` で挑戦するよう伝える。
+- 3 は `hlsearch` と `incsearch` が両方入ったら、4 は `ignorecase` が切れたら達成（4 は最初から成り立つが、3 のあとでないと数えない）。
+- 今の TODO 1・2 の目的地を黄色く光らせる。
+- 最短は 35 キー（`vim` Enter の4キー＋`/v` Enter＋`:se ic` Enter＋`n`＋`:se hls is` Enter＋`:se noic` Enter）。練習文で小文字の `v` は 2 行目の `vim` が最初で、`:set` は `:se` と縮められる。
 
 ---
 

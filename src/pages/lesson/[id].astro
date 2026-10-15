@@ -519,6 +519,10 @@ const next = nextLesson(lesson.id);
     color: var(--ed-fg);
     font: inherit;
   }
+  /* Search matches show only as :set hlsearch and incsearch say (the editor sets show-matches), like Vim. */
+  #editor:not(.show-matches) :global(.cm-searchMatch) {
+    background: none;
+  }
   /* A faint backing as well as the glow, so a marked space (where d$ starts in 2.2) shows too. */
   #editor :global(.cm-target) {
     color: var(--star);

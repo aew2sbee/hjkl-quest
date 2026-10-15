@@ -2,7 +2,7 @@ import { history, isolateHistory } from '@codemirror/commands';
 import { Annotation, ChangeSet, EditorSelection, EditorState, Prec, StateEffect, StateField, Text } from '@codemirror/state';
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
-import type { EditorSnapshot, Lesson, Pos, Span } from '../lessons/types';
+import type { EditorSnapshot, Lesson, Pos, SearchOptions, Span } from '../lessons/types';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
@@ -57,6 +57,8 @@ const targetField = StateField.define<DecorationSet>({
 // Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
 interface ExParams {
   argString?: string;
+  /** What follows the command, split at spaces. */
+  args?: string[];
   /** The range, as 0-based lines, when one was given. */
   line?: number;
   lineEnd?: number;
@@ -68,6 +70,7 @@ interface Route {
   fileInfo(): void;
   write(params: ExParams): void;
   read(params: ExParams): void;
+  set(args: string[]): void;
 }
 const routes = new WeakMap<object, Route>();
 Vim.defineEx('quit', 'q', (cm: object, params: ExParams) => {
@@ -91,6 +94,18 @@ Vim.mapCommand('U', 'action', 'undoLine', {}, { context: 'normal', isEdit: true 
 Vim.defineAction('fileInfo', (cm: object) => routes.get(cm)?.fileInfo());
 Vim.mapCommand('<C-g>', 'action', 'fileInfo', {}, { context: 'normal' });
 
+// Search options codemirror-vim lacks. It always searches as if 'smartcase' were set, so each search is
+// adjusted to 'ignorecase' (see createLessonEditor), and matches show only as 'hlsearch' and 'incsearch' say.
+const searchOptions: Record<keyof SearchOptions, string> = { ignorecase: 'ic', hlsearch: 'hls', incsearch: 'is' };
+for (const [name, alias] of Object.entries(searchOptions)) {
+  Vim.defineOption(name, false, 'boolean', [alias]);
+}
+const searchOption = (name: keyof SearchOptions) => Vim.getOption(name) === true;
+// codemirror-vim's :set takes only the first option; Vim takes them all (:set hls is).
+Vim.defineEx('set', 'se', (cm: object, params: ExParams) => {
+  routes.get(cm)?.set(params.args ?? []);
+});
+
 // Marks the change U makes, so it does not count as a new edit of the line.
 const byUndoLine = Annotation.define<boolean>();
 
@@ -109,6 +124,9 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let lineStale = false;
   // The key that opened the prompt under the editor: ":" for an Ex command, "/" or "?" for a search.
   let promptKey = '';
+  // The last search as typed, before it was adjusted to 'ignorecase', and whether one is being typed now.
+  let lastSearch = '';
+  let searching = false;
 
   // Runs before the Vim plugin. Returning true stops the key there (and prevents the browser default).
   const guard = Prec.highest(
@@ -122,7 +140,11 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
         const name = keyName(e);
         handlers.onKey(name, verdict);
         if (verdict !== 'pass') return true;
-        if ((mode === 'normal' || mode === 'visual') && !awaitingChar && [':', '/', '?'].includes(e.key)) promptKey = e.key;
+        if ((mode === 'normal' || mode === 'visual') && !awaitingChar && [':', '/', '?'].includes(e.key)) {
+          promptKey = e.key;
+          searching = e.key !== ':';
+          showMatches();
+        }
         // Esc cancels a half-typed command, and ":" opens the Ex command line, which is tracked on its own.
         if (mode !== 'normal' || e.key === 'Escape' || e.key === ':') typing = [];
         else typing.push(name);
@@ -227,6 +249,45 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     });
   }
 
+  // :set ic, :set hls is, :set noic. Only the search options are known here.
+  function set(args: string[]) {
+    for (const arg of args) {
+      const [, no, name] = /^(no)?(\w+)$/.exec(arg) ?? [];
+      const option = Object.entries(searchOptions).find(([long, short]) => name === long || name === short)?.[0];
+      if (!option) return handlers.onMessage(`E518: Unknown option: ${arg}`);
+      Vim.setOption(option, !no);
+    }
+    // The last search follows 'ignorecase' too, so n after :set ic finds VIM as well as vim.
+    const search = (getCM(view)?.state as { vim?: { searchState_?: { getQuery(): unknown; setQuery(q: RegExp): void } } })
+      ?.vim?.searchState_;
+    if (lastSearch && search?.getQuery()) {
+      try {
+        search.setQuery(new RegExp(lastSearch, searchOption('ignorecase') ? 'im' : 'm'));
+      } catch {
+        // Not a pattern JavaScript can read; the search stays as it was.
+      }
+    }
+    showMatches();
+    // Nothing the editor watches changes, so judge here: the TODO may be to set an option.
+    handlers.onChange(snapshot());
+  }
+
+  // codemirror-vim lowers the case of a search with no capitals ('smartcase'). Vim does not, unless
+  // 'ignorecase' is set. So a search with no capitals gets an empty part that has one, which makes it
+  // keep its case, and with 'ignorecase' a search with capitals gets the "i" flag.
+  const adjustSearch = (query: string) => {
+    if (query.includes('/')) return query;
+    if (searchOption('ignorecase')) return /[A-Z]/.test(query) ? `${query}/i` : query;
+    return /[A-Z]/.test(query) ? query : `${query}(?:[A-Z]{0})`;
+  };
+
+  // Matches are highlighted with 'hlsearch', and while typing a search with 'incsearch'.
+  // The class goes on the parent: CodeMirror rewrites the classes of its own elements.
+  function showMatches() {
+    const on = searchOption('hlsearch') || (searching && searchOption('incsearch'));
+    parent.classList.toggle('show-matches', on);
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
@@ -239,6 +300,15 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
       // Like a normal-mode command, it is logged before it changes anything.
       if (e.key === 'Enter' && promptKey === ':') commands.push(`:${e.target.value}`);
+      if ((e.key === 'Enter' || e.key === 'Escape') && promptKey !== ':') {
+        // An empty search repeats the last one, which was already adjusted.
+        if (e.key === 'Enter' && e.target.value) {
+          lastSearch = e.target.value;
+          e.target.value = adjustSearch(lastSearch);
+        }
+        searching = false;
+        showMatches();
+      }
     },
     true,
   );
@@ -252,9 +322,14 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     lineBefore = null;
     lineStale = false;
     promptKey = '';
+    lastSearch = '';
+    searching = false;
+    // Options are global in codemirror-vim, so each start goes back to Vim's defaults.
+    for (const name of Object.keys(searchOptions)) Vim.setOption(name, false);
+    showMatches();
     const cm = getCM(view);
     if (!cm) return;
-    routes.set(cm, { handlers, undoLine, fileInfo, write, read });
+    routes.set(cm, { handlers, undoLine, fileInfo, write, read, set });
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
     // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
@@ -279,6 +354,11 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       anchor: { line: anchor.line, ch: anchor.ch },
       mode,
       commands: [...commands],
+      options: {
+        ignorecase: searchOption('ignorecase'),
+        hlsearch: searchOption('hlsearch'),
+        incsearch: searchOption('incsearch'),
+      },
     };
   }
 

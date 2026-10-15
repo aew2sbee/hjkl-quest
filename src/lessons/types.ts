@@ -9,6 +9,13 @@ export interface Span extends Pos {
   length: number;
 }
 
+/** The search options `:set` changes, by their long names. All off when Vim starts. */
+export interface SearchOptions {
+  ignorecase: boolean;
+  hlsearch: boolean;
+  incsearch: boolean;
+}
+
 /** The editor part of a snapshot. */
 export interface EditorSnapshot {
   lines: string[];
@@ -17,6 +24,7 @@ export interface EditorSnapshot {
   anchor: Pos;
   /** Vim mode: "normal", "insert", "visual", "replace". */
   mode: string;
+  options: SearchOptions;
   /**
    * Commands run since Vim opened, in order, e.g. ["w", "dw", "i", ":s/a/b/g"]. Normal-mode commands
    * by their keys, searches by the key that opened them ("/"), and Ex commands as typed after ":".
