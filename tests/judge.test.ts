@@ -12,7 +12,7 @@ import lesson2_1 from '../src/lessons/2-1';
 import { nextLesson } from '../src/lessons';
 import type { Pos, Snapshot } from '../src/lessons/types';
 
-const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, anchor: cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {} });
+const at = (cursor: Pos): Snapshot => ({ lines: lesson.buffer, cursor, anchor: cursor, mode: 'normal', screen: 'vim', ran: [], commands: [], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } });
 const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   lines: lesson1_2.buffer,
   cursor: { line: 0, ch: 0 },
@@ -22,6 +22,7 @@ const after = (screen: Snapshot['screen'], ran: string[]): Snapshot => ({
   ran,
   commands: [],
   files: {},
+  options: { ignorecase: false, hlsearch: false, incsearch: false },
 });
 const key = (k: string, mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key: k,
@@ -140,6 +141,7 @@ describe('lesson 1-3', () => {
     ran: ['vim'],
     commands: [],
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
 
   it('is done after fixing all three words', () => {
@@ -175,6 +177,7 @@ describe('lesson 1-4', () => {
     ran: ['vim'],
     commands: [],
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
 
   it('is done after adding both words and going back to normal mode', () => {
@@ -205,6 +208,7 @@ describe('lesson 1-5', () => {
     ran: ['vim'],
     commands: [],
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
   const [sun, cats] = lesson1_5.buffer;
   const sunDone = '---> The sun rises in the east.';
@@ -245,6 +249,7 @@ describe('lesson 1-6', () => {
     ran,
     commands: [],
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
   const fixed = '---> Remember to buy milk.';
 
@@ -286,6 +291,7 @@ describe('lesson 2-1', () => {
     ran: ['vim'],
     commands,
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
   const noVery = '---> Please keep the noisy important words only.';
   const noNoisy = '---> Please keep very the important words only.';
@@ -348,6 +354,7 @@ describe('step while typing', () => {
     ran: ['vim'],
     commands,
     files: {},
+    options: { ignorecase: false, hlsearch: false, incsearch: false },
   });
 
   it('keeps what made a later TODO hold while text is typed for the current one', () => {
@@ -435,10 +442,7 @@ describe('nextLesson', () => {
     expect(nextLesson('6-1')).toEqual({ id: '6-2', title: 'a で後ろに追加', ready: true });
     expect(nextLesson('6-2')).toEqual({ id: '6-3', title: 'R で上書き', ready: true });
     expect(nextLesson('6-3')).toEqual({ id: '6-4', title: 'y と p でコピー', ready: true });
-  });
-
-  it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('6-4')).toEqual({ id: '6-5', title: ':set で設定', ready: false });
+    expect(nextLesson('6-4')).toEqual({ id: '6-5', title: ':set で設定', ready: true });
   });
 
   it('is undefined after the last lesson', () => {

@@ -27,6 +27,7 @@ import lesson6_1 from '../src/lessons/6-1';
 import lesson6_2 from '../src/lessons/6-2';
 import lesson6_3 from '../src/lessons/6-3';
 import lesson6_4 from '../src/lessons/6-4';
+import lesson6_5 from '../src/lessons/6-5';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -348,7 +349,7 @@ describe('lesson 3-1 in Vim', () => {
   it('asks for p when the order is made some other way', () => {
     const [b, a, d, c] = lesson3_1.buffer;
     // E.g. b) typed again by hand under a) with A, after deleting it with dd.
-    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, anchor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {} };
+    const s = { lines: [a, b, d, c], cursor: { line: 1, ch: 0 }, anchor: { line: 1, ch: 0 }, mode: 'normal', commands: ['dd', 'A'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } };
     expect(step(lesson3_1, startProgress(), s).wrong?.id).toBe('move-b');
   });
 });
@@ -362,7 +363,7 @@ describe('lesson 3-2 in Vim', () => {
 
   it('asks for r when the letter is fixed with x and i', () => {
     const lines = ['---> The cat sat on tha mat und slept.'];
-    const s = { lines, cursor: { line: 0, ch: 7 }, anchor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {} };
+    const s = { lines, cursor: { line: 0, ch: 7 }, anchor: { line: 0, ch: 7 }, mode: 'normal', commands: ['2e', 'x', 'i'], screen: 'vim' as const, ran: ['vim'], files: {}, options: { ignorecase: false, hlsearch: false, incsearch: false } };
     expect(step(lesson3_2, startProgress(), s).wrong?.id).toBe('fix-the');
   });
 });
@@ -671,5 +672,74 @@ describe('lesson 6-4 in Vim', () => {
   it('asks for p when the name is typed in', () => {
     const p = play(lesson6_4, ['j', '$', 'i', ...typed('Alice'), 'Escape']);
     expect(p.wrong?.id).toBe('copy-name');
+  });
+});
+
+describe('search options in the editor', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+  const shown = () => document.querySelector('.cm-editor')!.parentElement!.classList.contains('show-matches');
+
+  it('keeps the case of a search unless ignorecase is set, as Vim does', () => {
+    const { editor, press } = open(lesson6_5);
+    press(...run('/vim'));
+    expect(editor.snapshot().cursor).toEqual({ line: 1, ch: 32 });
+    press(...run(':set ic'), 'n');
+    expect(editor.snapshot().cursor).toEqual({ line: 2, ch: 22 });
+    press(...run(':set noic'), 'n');
+    expect(editor.snapshot().cursor).toEqual({ line: 3, ch: 19 });
+  });
+
+  it('finds lower case with capitals in the search once ignorecase is set', () => {
+    const { editor, press } = open(lesson6_5);
+    press(...run(':set ic'), ...run('/VIM'));
+    expect(editor.snapshot().cursor.line).toBe(0);
+  });
+
+  it('sets several options at once, by long or short name, and says which it does not know', () => {
+    const messages: string[] = [];
+    const { editor, press } = open(lesson6_5, { onMessage: (t) => messages.push(t) });
+    press(...run(':set hlsearch is'));
+    expect(editor.snapshot().options).toEqual({ ignorecase: false, hlsearch: true, incsearch: true });
+    press(...run(':se nohls'), ...run(':set number'));
+    expect(editor.snapshot().options.hlsearch).toBe(false);
+    expect(messages).toEqual(['E518: Unknown option: number']);
+  });
+
+  it('highlights matches only with hlsearch, or with incsearch while a search is typed', () => {
+    const { press } = open(lesson6_5);
+    press(...run('/vim'));
+    expect(shown()).toBe(false);
+    press(...run(':set is'), '/');
+    expect(shown()).toBe(true);
+    press('v', 'Enter');
+    expect(shown()).toBe(false);
+    press(...run(':set hls'));
+    expect(shown()).toBe(true);
+  });
+
+  it('starts over with every option off', () => {
+    const { editor, press } = open(lesson6_5);
+    press(...run(':set ic hls'));
+    editor.reset();
+    expect(editor.snapshot().options).toEqual({ ignorecase: false, hlsearch: false, incsearch: false });
+  });
+});
+
+describe('lesson 6-5 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('clears in optimalKeys with /v, :se ic, n, :se hls is, :se noic', () => {
+    const seq = [...run('/v'), ...run(':se ic'), 'n', ...run(':se hls is'), ...run(':se noic')];
+    expect(play(lesson6_5, seq)).toMatchObject({ done: 4, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson6_5.optimalKeys);
+  });
+
+  it('clears with the commands as the TODOs write them', () => {
+    const seq = [...run('/vim'), ...run(':set ic'), 'n', ...run(':set hls is'), ...run(':set noic')];
+    expect(play(lesson6_5, seq)).toMatchObject({ done: 4, wrong: undefined });
+  });
+
+  it('asks for n when VIM is found by searching for it', () => {
+    expect(play(lesson6_5, [...run('/vim'), ...run('/VIM')]).wrong?.id).toBe('ignore-case');
   });
 });
