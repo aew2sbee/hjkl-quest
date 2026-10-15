@@ -3,6 +3,7 @@ import { Annotation, ChangeSet, Compartment, EditorSelection, EditorState, Prec,
 import { Decoration, EditorView, lineNumbers, type DecorationSet } from '@codemirror/view';
 import { getCM, vim, Vim } from '@replit/codemirror-vim';
 import type { EditorSnapshot, Lesson, Pos, SearchOptions, Span } from '../lessons/types';
+import { completions } from './complete';
 import { classifyKey, keyName, type KeyVerdict } from './judge';
 
 export interface EditorHandlers {
@@ -24,6 +25,10 @@ export interface EditorHandlers {
   onHelp(topic: string): void;
   /** `:e` was run, with what follows it (e.g. "~/.vimrc", "! notes.txt"). */
   onEdit(arg: string): void;
+  /** The file names the command line can complete. */
+  fileNames(): string[];
+  /** Ctrl-D listed or Tab completed in the command line, as the key and the line: "<C-D>:e", "<Tab>:edit". */
+  onCompleted(entry: string): void;
   /** The lines `:r` puts in: a file's (`part.txt`), or a command's output (`!ls`). Undefined when there is no such file. */
   read(source: string): string[] | undefined;
 }
@@ -140,6 +145,8 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
   let lineStale = false;
   // The key that opened the prompt under the editor: ":" for an Ex command, "/" or "?" for a search.
   let promptKey = '';
+  // Tab pressed again right after a Tab goes on to the next match: what it chose from, and what it put in.
+  let tabbing: { base: string; matches: string[]; index: number; shown: string } | null = null;
   // The last search as typed, before it was adjusted to 'ignorecase', and whether one is being typed now.
   let lastSearch = '';
   let searching = false;
@@ -310,6 +317,21 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     parent.classList.toggle('show-matches', on);
   }
 
+  // Ctrl-D lists what can finish the word before the cursor; Tab puts the first one in, then the next, as in Vim.
+  function complete(input: HTMLInputElement, key: string) {
+    const line = input.value;
+    if (key === 'Ctrl-d') {
+      handlers.onMessage(completions(line, handlers.fileNames()).matches.join('  '));
+      handlers.onCompleted(`<C-D>:${line}`);
+      return;
+    }
+    if (tabbing?.shown !== line) tabbing = { ...completions(line, handlers.fileNames()), index: -1, shown: line };
+    if (!tabbing.matches.length) return;
+    tabbing.index = (tabbing.index + 1) % tabbing.matches.length;
+    input.value = tabbing.shown = tabbing.base + tabbing.matches[tabbing.index];
+    handlers.onCompleted(`<Tab>:${input.value}`);
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the prompt (after ":", "/" or "?") go to an <input>, not to the guard above. Log them too.
@@ -318,6 +340,15 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     'keydown',
     (e) => {
       if (!(e.target instanceof HTMLInputElement) || e.isComposing) return;
+      const key = keyName(e);
+      // Completion, in the lessons that teach it. Elsewhere Tab leaves the editor as usual.
+      if (promptKey === ':' && (key === 'Tab' || key === 'Ctrl-d') && lesson.keys.includes(key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handlers.onKey(key, 'pass');
+        complete(e.target, key);
+        return;
+      }
       if (e.key.length === 1 || ['Enter', 'Backspace', 'Escape'].includes(e.key)) handlers.onKey(keyName(e), 'pass');
       // An Ex command is logged with what was typed, e.g. ":s/a/b/g", as Enter runs it.
       // Like a normal-mode command, it is logged before it changes anything.

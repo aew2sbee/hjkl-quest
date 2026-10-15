@@ -120,6 +120,12 @@ const next = nextLesson(lesson.id);
     onHelp,
     onEdit,
     read,
+    fileNames: () => Object.keys(files),
+    onCompleted(entry) {
+      ran = [...ran, entry];
+      // Completing changes nothing the editor watches, so judge here: the TODO may be to complete.
+      judge();
+    },
   });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
     onKey: (name) => onKey(name, 'pass'),
