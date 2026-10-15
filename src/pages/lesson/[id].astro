@@ -110,6 +110,7 @@ const next = nextLesson(lesson.id);
     onWriteQuit,
     onMessage: (text) => setCmdline(text),
     onShell,
+    read,
   });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
     onKey: (name) => onKey(name, 'pass'),
@@ -194,6 +195,14 @@ const next = nextLesson(lesson.id);
     setCmdline(out.lines.join('\n'));
     // Running it changes nothing the editor watches, so judge here: the TODO may be to run it.
     judge();
+  }
+
+  // What :r puts in: a file, or what :r !cmd prints.
+  function read(source: string): string[] | undefined {
+    if (!source.startsWith('!')) return files[source];
+    const out = runShell(source.slice(1), files);
+    files = out.files;
+    return out.lines;
   }
 
   function onKey(name: string, verdict: Exclude<KeyVerdict, 'ignore'>) {

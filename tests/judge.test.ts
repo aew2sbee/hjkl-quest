@@ -392,10 +392,7 @@ describe('nextLesson', () => {
     expect(nextLesson('4-4')).toEqual({ id: '5-1', title: ':! で外部コマンド', ready: true });
     expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: true });
     expect(nextLesson('5-2')).toEqual({ id: '5-3', title: '選んだ行だけ保存', ready: true });
-  });
-
-  it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('5-3')).toEqual({ id: '5-4', title: ':r でファイルを読み込む', ready: false });
+    expect(nextLesson('5-3')).toEqual({ id: '5-4', title: ':r でファイルを読み込む', ready: true });
   });
 
   it('is undefined after the last lesson', () => {

@@ -22,6 +22,7 @@ import lesson4_4 from '../src/lessons/4-4';
 import lesson5_1 from '../src/lessons/5-1';
 import lesson5_2 from '../src/lessons/5-2';
 import lesson5_3 from '../src/lessons/5-3';
+import lesson5_4 from '../src/lessons/5-4';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -55,6 +56,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onWriteQuit() {},
     onMessage() {},
     onShell() {},
+    read: () => undefined,
     ...handlers,
   });
   const view = EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!;
@@ -104,6 +106,7 @@ function play(lesson: Lesson, keys: string[]): Progress & { files: Files } {
       files = runShell(command, files).files;
       judge(editor.snapshot());
     },
+    read: (source) => (source.startsWith('!') ? runShell(source.slice(1), files).lines : files[source]),
   });
   for (const key of keys) {
     press(key);
@@ -565,5 +568,41 @@ describe('lesson 5-3 in Vim', () => {
   it('asks for the selection when the lines are written by number', () => {
     const p = play(lesson5_3, [...keys('j v j j Escape'), ...typed(':2,4w part.txt'), 'Enter']);
     expect(p).toMatchObject({ done: 1, wrong: { id: 'write' } });
+  });
+});
+
+describe('lesson 5-4 in Vim', () => {
+  const run = (cmd: string) => [...typed(cmd), 'Enter'];
+
+  it('reads a file under the cursor line and undoes it in one step', () => {
+    const { editor, press } = open(lesson5_4, { read: () => ['one', 'two'] });
+    press('j', ...run(':r part.txt'));
+    expect(editor.snapshot()).toMatchObject({ lines: [lesson5_4.buffer[0], lesson5_4.buffer[1], 'one', 'two', ...lesson5_4.buffer.slice(2)], cursor: { line: 2, ch: 0 } });
+    press('u');
+    expect(editor.snapshot().lines).toEqual(lesson5_4.buffer);
+  });
+
+  it('says when the file is not there', () => {
+    const messages: string[] = [];
+    const { editor, press } = open(lesson5_4, { onMessage: (t) => messages.push(t) });
+    press(...run(':r nothing.txt'));
+    expect(messages).toEqual(["E484: Can't open file nothing.txt"]);
+    expect(editor.snapshot().lines).toEqual(lesson5_4.buffer);
+  });
+
+  it('clears in optimalKeys with :3r part.txt and :$r!ls', () => {
+    const seq = [...run(':3r part.txt'), ...run(':$r!ls')];
+    expect(play(lesson5_4, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson5_4.optimalKeys);
+  });
+
+  it('clears with the commands as the TODOs write them', () => {
+    expect(play(lesson5_4, [...keys('j j'), ...run(':r part.txt'), 'G', ...run(':r !ls')])).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('does not read into a read-only lesson', () => {
+    const { editor, press } = open(lesson5_3, { read: () => ['one'] });
+    press(...run(':r part.txt'));
+    expect(editor.snapshot().lines).toEqual(lesson5_3.buffer);
   });
 });
