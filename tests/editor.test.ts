@@ -16,6 +16,7 @@ import lesson3_2 from '../src/lessons/3-2';
 import lesson3_3 from '../src/lessons/3-3';
 import lesson3_4 from '../src/lessons/3-4';
 import lesson4_1 from '../src/lessons/4-1';
+import lesson4_2 from '../src/lessons/4-2';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -27,6 +28,13 @@ Range.prototype.getBoundingClientRect = () => new DOMRect();
 function keyEvent(key: string) {
   const ctrlKey = key.startsWith('Ctrl-');
   return { key: ctrlKey ? key.slice(5) : key, ctrlKey, metaKey: false, altKey: false };
+}
+
+/** A keydown for `key`. The prompt Vim opens for ":" and "/" still reads Enter and Esc by keyCode. */
+function keydown(key: string) {
+  const e = new KeyboardEvent('keydown', { ...keyEvent(key), bubbles: true, cancelable: true });
+  Object.defineProperty(e, 'keyCode', { value: ({ Enter: 13, Escape: 27 } as Record<string, number>)[key] ?? 0 });
+  return e;
 }
 
 /** A lesson editor in a fresh DOM, and a way to type keys into it. */
@@ -48,10 +56,17 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
   const content = parent.querySelector<HTMLElement>('.cm-content')!;
   const press = (...keys: string[]) => {
     for (const key of keys) {
+      // jsdom does not type characters from keydown. The browser would, unless the key was stopped.
+      const prompt = parent.querySelector<HTMLInputElement>('.cm-vim-panel input');
+      if (prompt) {
+        const e = keydown(key);
+        prompt.dispatchEvent(e);
+        if (key.length === 1 && !e.defaultPrevented) prompt.value += key;
+        continue;
+      }
       const typing = editor.snapshot().mode === 'insert';
-      const e = new KeyboardEvent('keydown', { ...keyEvent(key), bubbles: true, cancelable: true });
+      const e = keydown(key);
       content.dispatchEvent(e);
-      // jsdom does not type characters from keydown. In insert mode the browser would, unless the key was stopped.
       if (typing && key.length === 1 && !e.defaultPrevented) {
         view.dispatch(view.state.replaceSelection(key), { userEvent: 'input.type' });
       }
@@ -385,5 +400,35 @@ describe('lesson 4-1 in Vim', () => {
 
   it('asks for G when the last line is reached another way', () => {
     expect(play(lesson4_1, keys('Ctrl-g 30G')).wrong?.id).toBe('to-last');
+  });
+});
+
+describe('lesson 4-2 in Vim', () => {
+  it('clears in optimalKeys with /tr, n, N, Ctrl-O three times and ? alone', () => {
+    const seq = [...typed('/tr'), 'Enter', 'n', 'N', 'Ctrl-o', 'Ctrl-o', 'Ctrl-o', '?', 'Enter'];
+    expect(play(lesson4_2, seq)).toMatchObject({ done: 5, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson4_2.optimalKeys);
+  });
+
+  it('clears with the whole word typed', () => {
+    const seq = [...typed('/treasure'), 'Enter', 'n', 'N', 'Ctrl-o', 'Ctrl-o', 'Ctrl-o', ...typed('?treasure'), 'Enter'];
+    expect(play(lesson4_2, seq)).toMatchObject({ done: 5, wrong: undefined });
+  });
+
+  it('records a search as the key that opened it', () => {
+    const { editor, press } = open(lesson4_2);
+    press(...typed('/treasure'), 'Enter');
+    expect(editor.snapshot()).toMatchObject({ commands: ['/'], cursor: { line: 3, ch: 15 } });
+  });
+
+  it('asks for Ctrl-O when the start is reached with gg', () => {
+    expect(play(lesson4_2, [...typed('/tr'), 'Enter', 'n', 'N', 'g', 'g']).wrong?.id).toBe('jump-back');
+  });
+
+  it('stops Ctrl-O before the browser opens a file', () => {
+    open(lesson4_2);
+    const e = keydown('Ctrl-o');
+    document.querySelector('.cm-content')!.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
   });
 });
