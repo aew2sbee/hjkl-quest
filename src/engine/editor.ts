@@ -16,6 +16,8 @@ export interface EditorHandlers {
   onWriteQuit(): void;
   /** A line for the command line under the editor, e.g. what Ctrl-G reports. */
   onMessage(text: string): void;
+  /** `:!cmd` was run, with what follows the "!". */
+  onShell(command: string): void;
 }
 
 export interface LessonEditor {
@@ -60,6 +62,9 @@ Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
 });
 Vim.defineEx('wq', 'wq', (cm: object) => {
   routes.get(cm)?.handlers.onWriteQuit();
+});
+Vim.defineEx('!', '!', (cm: object, params: { argString?: string }) => {
+  routes.get(cm)?.handlers.onShell(params.argString ?? '');
 });
 // codemirror-vim has no U or Ctrl-G in normal mode, so they are added here (see createLessonEditor).
 Vim.defineAction('undoLine', (cm: object) => routes.get(cm)?.undoLine());

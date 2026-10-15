@@ -75,6 +75,8 @@ export interface Lesson {
    */
   saves?: boolean;
   buffer: string[];
+  /** Other files in the directory Vim runs in, which `:!ls` lists. */
+  files?: Record<string, string[]>;
   start: Pos;
   readOnly: boolean;
   /**

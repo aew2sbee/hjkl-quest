@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { advance, classifyKey, highlightFor, keyName, startProgress, step } from '../src/engine/judge';
+import { runShell } from '../src/engine/files';
 import { parseShellCommand } from '../src/engine/shell';
 import lesson from '../src/lessons/1-1';
 import lesson1_2 from '../src/lessons/1-2';
@@ -376,10 +377,15 @@ describe('nextLesson', () => {
     expect(nextLesson('4-1')).toEqual({ id: '4-2', title: '/ で検索', ready: true });
     expect(nextLesson('4-2')).toEqual({ id: '4-3', title: '% で対応する括弧へ', ready: true });
     expect(nextLesson('4-3')).toEqual({ id: '4-4', title: ':s で置換', ready: true });
+    expect(nextLesson('4-4')).toEqual({ id: '5-1', title: ':! で外部コマンド', ready: true });
+  });
+
+  it('says when the next lesson is not built yet', () => {
+    expect(nextLesson('5-1')).toEqual({ id: '5-2', title: ':w で名前を付けて保存', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
-    expect(nextLesson('4-4')).toBeUndefined();
+    expect(nextLesson('5-4')).toBeUndefined();
   });
 });
 
@@ -387,5 +393,22 @@ describe('keyName', () => {
   it('names Ctrl combinations like Vim', () => {
     expect(keyName(key('R', { ctrlKey: true }))).toBe('Ctrl-r');
     expect(keyName(key('j'))).toBe('j');
+  });
+});
+
+describe('runShell', () => {
+  const files = { 'b.txt': ['two'], 'a.txt': ['one', 'more'] };
+
+  it('lists the files with ls', () => {
+    expect(runShell('ls', files)).toEqual(['a.txt  b.txt']);
+  });
+
+  it('prints files with cat, and says which are missing', () => {
+    expect(runShell(' cat a.txt  c.txt', files)).toEqual(['one', 'more', 'cat: c.txt: No such file or directory']);
+  });
+
+  it('does not know other commands', () => {
+    expect(runShell('dir', files)).toEqual(['zsh:1: command not found: dir']);
+    expect(runShell('', files)).toEqual([]);
   });
 });
