@@ -15,11 +15,12 @@ import lesson3_1 from './3-1';
 import lesson3_2 from './3-2';
 import lesson3_3 from './3-3';
 import lesson3_4 from './3-4';
+import lesson4_1 from './4-1';
 import type { Lesson } from './types';
 
 /** Lessons that can be played, keyed by id. */
 export const lessons: Record<string, Lesson> = Object.fromEntries(
-  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4].map((l) => [l.id, l]),
+  [lesson1_1, lesson1_2, lesson1_3, lesson1_4, lesson1_5, lesson1_6, lesson2_1, lesson2_2, lesson2_3, lesson2_4, lesson2_5, lesson2_6, lesson2_7, lesson3_1, lesson3_2, lesson3_3, lesson3_4, lesson4_1].map((l) => [l.id, l]),
 );
 
 export interface ChapterOutline {
@@ -66,7 +67,16 @@ export const chapters: ChapterOutline[] = [
       { id: '3-4', title: 'c$ で行末まで変更' },
     ],
   },
-  { no: 4, title: '検索と移動', lessons: [] },
+  {
+    no: 4,
+    title: '検索と移動',
+    lessons: [
+      { id: '4-1', title: '位置とファイルの情報' },
+      { id: '4-2', title: '/ で検索' },
+      { id: '4-3', title: '% で対応する括弧へ' },
+      { id: '4-4', title: ':s で置換' },
+    ],
+  },
   { no: 5, title: 'ファイル操作', lessons: [] },
   { no: 6, title: 'その他の編集', lessons: [] },
   { no: 7, title: 'ヘルプと設定', lessons: [] },

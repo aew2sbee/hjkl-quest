@@ -98,7 +98,13 @@ const next = nextLesson(lesson.id);
 
   // The command that opens the lesson file, as suggested at the prompt.
   const openCommand = lesson.saves ? `vim ${lesson.fileName}` : 'vim';
-  const editor = createLessonEditor($('editor'), lesson, { onKey, onChange: judge, onQuit, onWriteQuit });
+  const editor = createLessonEditor($('editor'), lesson, {
+    onKey,
+    onChange: judge,
+    onQuit,
+    onWriteQuit,
+    onMessage: (text) => setCmdline(text),
+  });
   const shell = createShell($('shell'), 'Welcome to hjkl-quest shell', openCommand, {
     onKey: (name) => onKey(name, 'pass'),
     onCommand,
@@ -434,6 +440,8 @@ const next = nextLesson(lesson.id);
     color: var(--ed-fg);
     font-size: 15px;
     padding: 8px 0;
+    /* Long files (4.1 has 30 lines) scroll after 14 lines, so G and gg have somewhere to go. */
+    max-height: calc(15px * 1.7 * 14 + 16px);
   }
   #editor :global(.cm-editor.cm-focused) {
     outline: none;
@@ -441,6 +449,7 @@ const next = nextLesson(lesson.id);
   #editor :global(.cm-scroller) {
     font-family: var(--font-mono);
     line-height: 1.7;
+    overflow: auto;
   }
   #editor :global(.cm-gutters) {
     background: transparent;

@@ -14,6 +14,8 @@ export interface EditorHandlers {
   onQuit(force: boolean): void;
   /** `:wq` was run. */
   onWriteQuit(): void;
+  /** A line for the command line under the editor, e.g. what Ctrl-G reports. */
+  onMessage(text: string): void;
 }
 
 export interface LessonEditor {
@@ -47,17 +49,23 @@ const targetField = StateField.define<DecorationSet>({
 });
 
 // Ex commands and actions are global in codemirror-vim, so route them to the editor that ran them.
-const exHandlers = new WeakMap<object, EditorHandlers>();
-const lineUndoers = new WeakMap<object, () => void>();
+interface Route {
+  handlers: EditorHandlers;
+  undoLine(): void;
+  fileInfo(): void;
+}
+const routes = new WeakMap<object, Route>();
 Vim.defineEx('quit', 'q', (cm: object, params: { argString?: string }) => {
-  exHandlers.get(cm)?.onQuit(params.argString?.trim() === '!');
+  routes.get(cm)?.handlers.onQuit(params.argString?.trim() === '!');
 });
 Vim.defineEx('wq', 'wq', (cm: object) => {
-  exHandlers.get(cm)?.onWriteQuit();
+  routes.get(cm)?.handlers.onWriteQuit();
 });
-// codemirror-vim has no U in normal mode, so it is added here (see undoLine in createLessonEditor).
-Vim.defineAction('undoLine', (cm: object) => lineUndoers.get(cm)?.());
+// codemirror-vim has no U or Ctrl-G in normal mode, so they are added here (see createLessonEditor).
+Vim.defineAction('undoLine', (cm: object) => routes.get(cm)?.undoLine());
 Vim.mapCommand('U', 'action', 'undoLine', {}, { context: 'normal', isEdit: true });
+Vim.defineAction('fileInfo', (cm: object) => routes.get(cm)?.fileInfo());
+Vim.mapCommand('<C-g>', 'action', 'fileInfo', {}, { context: 'normal' });
 
 // Marks the change U makes, so it does not count as a new edit of the line.
 const byUndoLine = Annotation.define<boolean>();
@@ -158,6 +166,16 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     });
   }
 
+  // Ctrl-G: where the cursor is in the file, worded like Vim's report.
+  function fileInfo() {
+    const { cursor } = snapshot();
+    const total = view.state.doc.lines;
+    const percent = Math.floor(((cursor.line + 1) * 100) / total);
+    handlers.onMessage(`"${lesson.fileName}" line ${cursor.line + 1} of ${total} --${percent}%-- col ${cursor.ch + 1}`);
+    // Nothing the editor watches changes, so judge here: the TODO may be to run this.
+    handlers.onChange(snapshot());
+  }
+
   const view = new EditorView({ state: makeState(), parent });
 
   // Keys typed in the Ex command line (after ":") go to an <input>, not to the guard above. Log them too.
@@ -181,8 +199,7 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
     lineStale = false;
     const cm = getCM(view);
     if (!cm) return;
-    exHandlers.set(cm, handlers);
-    lineUndoers.set(cm, undoLine);
+    routes.set(cm, { handlers, undoLine, fileInfo });
     // Fired once a command is complete, before it runs, so the change it makes is judged with it.
     // Also fired when Vim drops keys that make no command (e.g. "dx"); those change nothing, so they never get credit.
     cm.on('vim-command-done', () => {
@@ -214,6 +231,10 @@ export function createLessonEditor(parent: HTMLElement, lesson: Lesson, handlers
       view.setState(makeState(lines, cursor));
       listen();
     },
-    focus: () => view.focus(),
+    focus() {
+      view.focus();
+      // The editor may have been reset while hidden behind the shell, where it could not scroll.
+      view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) });
+    },
   };
 }

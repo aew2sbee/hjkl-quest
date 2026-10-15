@@ -15,6 +15,7 @@ import lesson3_1 from '../src/lessons/3-1';
 import lesson3_2 from '../src/lessons/3-2';
 import lesson3_3 from '../src/lessons/3-3';
 import lesson3_4 from '../src/lessons/3-4';
+import lesson4_1 from '../src/lessons/4-1';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -37,6 +38,7 @@ function open(lesson: Lesson, handlers: Partial<EditorHandlers> = {}) {
     onChange() {},
     onQuit() {},
     onWriteQuit() {},
+    onMessage() {},
     ...handlers,
   });
   const view = EditorView.findFromDOM(parent.querySelector<HTMLElement>('.cm-editor')!)!;
@@ -353,5 +355,35 @@ describe('lesson 3-4 in Vim', () => {
   it('asks for c$ when the end is deleted with d$ and typed with A', () => {
     const p = play(lesson3_4, [...keys('5w d$ A'), ...typed('warm and sunny.'), 'Escape']);
     expect(p.wrong?.id).toBe('change-weather');
+  });
+});
+
+describe('Ctrl-G in the editor', () => {
+  it('reports the line like Vim and judges right away', () => {
+    const messages: string[] = [];
+    const seen: string[][] = [];
+    const { press } = open(lesson4_1, { onMessage: (t) => messages.push(t), onChange: (s) => seen.push(s.commands) });
+    press('Ctrl-g');
+    expect(messages).toEqual(['"lesson4-1.txt" line 15 of 30 --50%-- col 1']);
+    expect(seen.at(-1)).toEqual(['Ctrl-g']);
+  });
+
+  it('stops Ctrl-G before the browser finds text', () => {
+    open(lesson4_1);
+    const e = new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, bubbles: true, cancelable: true });
+    document.querySelector('.cm-content')!.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
+  });
+});
+
+describe('lesson 4-1 in Vim', () => {
+  it('clears in optimalKeys with Ctrl-G, G, gg, 15G', () => {
+    const seq = keys('Ctrl-g G gg 15G');
+    expect(play(lesson4_1, seq)).toMatchObject({ done: 4, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson4_1.optimalKeys);
+  });
+
+  it('asks for G when the last line is reached another way', () => {
+    expect(play(lesson4_1, keys('Ctrl-g 30G')).wrong?.id).toBe('to-last');
   });
 });
