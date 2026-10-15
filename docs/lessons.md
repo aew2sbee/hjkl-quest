@@ -534,15 +534,21 @@ Vim の中には、コピーを取っておくよう伝える1行（英語、書
 ### 6.1 行を開く — `o` `O`
 
 ```
----> Monday: wash the car
----> Wednesday: clean the room
-目標  Monday / Tuesday / Wednesday の行が揃い、先頭に見出しの行がある
+Monday: wash the car
+Wednesday: clean the room
+目標  My plan: / Monday: wash the car / Tuesday: buy milk / Wednesday: clean the room
 ```
 
 | # | TODO | 判定 | 必須 |
 |---|---|---|---|
-| 1 | `Monday` の下に `Tuesday: ...` の行を足す | 文 | `o` |
+| 1 | `Monday` の下に `Tuesday: buy milk` の行を足す | 文 | `o` |
 | 2 | 先頭に `My plan:` の行を足す | 文 | `O` |
+
+- 新しい行をまるごと打つので、練習文に `--->` を付けない（付けると打つ行にも `--->` が要る）。
+- シェル画面から始める。使えるキーは 5.4 のキーに `o` `O` を足したもの。挿入モードのキーは 1.4 と同じ（Enter は止める）。
+- 行を打ったあと `Esc` でノーマルモードに戻った時点で達成にする。`Wednesday` の行で `O` を押して同じ並びにしたときは、`o` で挑戦するよう伝える。足す順番は自由。
+- 今の TODO で、行を開く `Monday` の行を黄色く光らせる。
+- 最短は 34 キー（`vim` Enter の4キー＋`o` `Tuesday: buy milk` `Esc`＋`k` `O` `My plan:` `Esc`）。
 
 ### 6.2 カーソルの後ろに追加 — `a`
 

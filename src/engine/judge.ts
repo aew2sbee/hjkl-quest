@@ -74,10 +74,14 @@ const allowed = (todo: Todo, by: string | null) =>
 export function step(lesson: Lesson, p: Progress, s: Snapshot): Progress {
   const by = s.commands.at(-1) ?? null;
   const holds = new Map<string, string | null>();
+  // While text is being typed, a TODO that waits for Esc stops holding for a moment. Keep what made it hold.
+  const typing = s.mode === 'insert' || s.mode === 'replace';
   for (const todo of lesson.todos.slice(p.done)) {
-    if (todo.done(s)) holds.set(todo.id, p.holds.has(todo.id) ? p.holds.get(todo.id)! : by);
+    if (p.holds.has(todo.id) && (typing || todo.done(s))) holds.set(todo.id, p.holds.get(todo.id)!);
+    else if (todo.done(s)) holds.set(todo.id, by);
   }
-  const counts = (todo: Todo) => holds.has(todo.id) && allowed(todo, holds.get(todo.id)!);
+  // A hold kept while typing only counts once the condition is back.
+  const counts = (todo: Todo) => holds.has(todo.id) && allowed(todo, holds.get(todo.id)!) && todo.done(s);
   let done = p.done;
   while (done < lesson.todos.length && counts(lesson.todos[done])) {
     holds.delete(lesson.todos[done].id);

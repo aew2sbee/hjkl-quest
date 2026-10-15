@@ -23,6 +23,7 @@ import lesson5_1 from '../src/lessons/5-1';
 import lesson5_2 from '../src/lessons/5-2';
 import lesson5_3 from '../src/lessons/5-3';
 import lesson5_4 from '../src/lessons/5-4';
+import lesson6_1 from '../src/lessons/6-1';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -604,5 +605,24 @@ describe('lesson 5-4 in Vim', () => {
     const { editor, press } = open(lesson5_3, { read: () => ['one'] });
     press(...run(':r part.txt'));
     expect(editor.snapshot().lines).toEqual(lesson5_3.buffer);
+  });
+});
+
+describe('lesson 6-1 in Vim', () => {
+  it('clears in optimalKeys with o ... Esc, k O ... Esc', () => {
+    const seq = ['o', ...typed('Tuesday: buy milk'), 'Escape', 'k', 'O', ...typed('My plan:'), 'Escape'];
+    const p = play(lesson6_1, seq);
+    expect(p).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson6_1.optimalKeys);
+  });
+
+  it('counts the line above made first', () => {
+    const seq = ['O', ...typed('My plan:'), 'Escape', 'j', 'o', ...typed('Tuesday: buy milk'), 'Escape'];
+    expect(play(lesson6_1, seq)).toMatchObject({ done: 2, wrong: undefined });
+  });
+
+  it('asks for o when the line is opened above Wednesday with O', () => {
+    const p = play(lesson6_1, ['j', 'O', ...typed('Tuesday: buy milk'), 'Escape']);
+    expect(p.wrong?.id).toBe('open-below');
   });
 });
