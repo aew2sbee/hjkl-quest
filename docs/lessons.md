@@ -589,7 +589,7 @@ Wednesday: clean the room
 
 ```
 ---> Name: Alice
-     Hello, !
+---> Hello, !
 目標  Hello, Alice!
 ---> Repeat me.
 目標  Repeat me. の行が 2 行になる
@@ -599,6 +599,11 @@ Wednesday: clean the room
 |---|---|---|---|
 | 1 | `Alice` をコピーして `Hello,` の後ろに貼る | 文 | `v` `y` `p` |
 | 2 | `Repeat me.` の行を複製する | 文 | `yy` `p` |
+
+- シェル画面から始める。使えるキーは 6.3 のキーに `y` を足したもの。
+- 判定は「最後のコマンドが `p`」。`i` で `Alice` と打ったときや、`o` で行を打ち直したときは、`p` で挑戦するよう伝える。`yw` でコピーしても `p` で貼れば達成にする。直す順番は自由。
+- 今の TODO でコピーする `Alice`、`Repeat me.` を黄色く光らせる。
+- 最短は 15 キー（`vim` Enter の4キー＋`3w` `v` `e` `y`＋`j` `p`＋`j` `yy` `p`）。`y` のあとカーソルは選んだ所の先頭（`A`）に戻るので、`j` で下りると `Hello,` の後ろの空白に着き、`p` でその後ろに貼れる。
 
 ### 6.5 オプションの設定 — `:set ic` `:set hls is` `:set noic`
 

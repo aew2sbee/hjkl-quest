@@ -26,6 +26,7 @@ import lesson5_4 from '../src/lessons/5-4';
 import lesson6_1 from '../src/lessons/6-1';
 import lesson6_2 from '../src/lessons/6-2';
 import lesson6_3 from '../src/lessons/6-3';
+import lesson6_4 from '../src/lessons/6-4';
 import { runShell, type Files } from '../src/engine/files';
 import type { EditorSnapshot, Lesson, Pos } from '../src/lessons/types';
 
@@ -657,5 +658,18 @@ describe('lesson 6-3 in Vim', () => {
 
   it('asks for R when the room is fixed with r', () => {
     expect(play(lesson6_3, keys('2w r3 l r0 l r4')).wrong?.id).toBe('fix-room');
+  });
+});
+
+describe('lesson 6-4 in Vim', () => {
+  it('clears in optimalKeys with 3w v e y, j p, j yy p', () => {
+    const seq = keys('3w v e y j p j yy p');
+    expect(play(lesson6_4, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson6_4.optimalKeys);
+  });
+
+  it('asks for p when the name is typed in', () => {
+    const p = play(lesson6_4, ['j', '$', 'i', ...typed('Alice'), 'Escape']);
+    expect(p.wrong?.id).toBe('copy-name');
   });
 });
