@@ -14,6 +14,7 @@ import lesson2_7 from '../src/lessons/2-7';
 import lesson3_1 from '../src/lessons/3-1';
 import lesson3_2 from '../src/lessons/3-2';
 import lesson3_3 from '../src/lessons/3-3';
+import lesson3_4 from '../src/lessons/3-4';
 import type { Lesson, Pos } from '../src/lessons/types';
 
 // jsdom has no layout. CodeMirror measures text with these, so give it empty boxes.
@@ -339,5 +340,18 @@ describe('lesson 3-3 in Vim', () => {
   it('asks for ce when the word is deleted with de and typed with i', () => {
     const p = play(lesson3_3, [...keys('3w de i'), ...typed('toy'), 'Escape']);
     expect(p.wrong?.id).toBe('change-toy');
+  });
+});
+
+describe('lesson 3-4 in Vim', () => {
+  it('clears in optimalKeys with 5w c$ ..., j 4h c$ ...', () => {
+    const seq = [...keys('5w c$'), ...typed('warm and sunny.'), 'Escape', ...keys('j 4h c$'), ...typed('two.'), 'Escape'];
+    expect(play(lesson3_4, seq)).toMatchObject({ done: 2, wrong: undefined });
+    expect(4 + seq.length).toBe(lesson3_4.optimalKeys);
+  });
+
+  it('asks for c$ when the end is deleted with d$ and typed with A', () => {
+    const p = play(lesson3_4, [...keys('5w d$ A'), ...typed('warm and sunny.'), 'Escape']);
+    expect(p.wrong?.id).toBe('change-weather');
   });
 });
