@@ -370,10 +370,11 @@ describe('nextLesson', () => {
     expect(nextLesson('2-6')).toEqual({ id: '2-7', title: '取り消しとやり直し', ready: true });
     expect(nextLesson('2-7')).toEqual({ id: '3-1', title: 'p で貼り付け', ready: true });
     expect(nextLesson('3-1')).toEqual({ id: '3-2', title: 'r で1文字置き換え', ready: true });
+    expect(nextLesson('3-2')).toEqual({ id: '3-3', title: 'ce で単語を変更', ready: true });
   });
 
   it('says when the next lesson is not built yet', () => {
-    expect(nextLesson('3-2')).toEqual({ id: '3-3', title: 'ce で単語を変更', ready: false });
+    expect(nextLesson('3-3')).toEqual({ id: '3-4', title: 'c$ で行末まで変更', ready: false });
   });
 
   it('is undefined after the last lesson', () => {
