@@ -49,7 +49,8 @@ export interface Todo {
   target?: Pos;
   /**
    * Text highlighted in the editor while this TODO is the current one, found by search
-   * because earlier edits move it. Shows where to look without showing which letter to fix.
+   * because earlier edits move it. Shows where to look without showing which letter to fix,
+   * except where the lesson is about where a command starts (2.2 marks what d$ deletes).
    */
   mark?: string;
 }
