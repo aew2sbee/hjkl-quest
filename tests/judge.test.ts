@@ -357,6 +357,7 @@ describe('nextLesson', () => {
     expect(nextLesson('1-6')).toEqual({ id: '2-1', title: 'dw で単語を削除', ready: true });
     expect(nextLesson('2-1')).toEqual({ id: '2-2', title: 'd$ で行末まで削除', ready: true });
     expect(nextLesson('2-2')).toEqual({ id: '2-3', title: 'オペレータとモーション', ready: true });
+    expect(nextLesson('2-3')).toEqual({ id: '2-4', title: 'カウントで移動', ready: true });
   });
 
   it('is undefined after the last lesson', () => {
